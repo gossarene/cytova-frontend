@@ -15,6 +15,7 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { useRequests } from '../api'
 import { formatDate } from '@/lib/utils/date'
 import { ROUTES } from '@/config/routes'
@@ -23,6 +24,7 @@ const STATUS_OPTIONS = ['all', 'DRAFT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED',
 
 export function RequestListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.REQUESTS_CREATE)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -58,7 +60,7 @@ export function RequestListPage() {
       {isLoading ? <TableSkeleton rows={8} columns={7} /> : requests.length === 0 ? (
         <EmptyState icon={ClipboardList} title="No requests found"
           description={search ? 'Try adjusting your search or filters.' : 'Create your first analysis request.'}
-          action={!search ? { label: 'New Request', onClick: () => navigate(ROUTES.REQUEST_NEW) } : undefined}
+          action={!search && canCreate ? { label: 'New Request', onClick: () => navigate(ROUTES.REQUEST_NEW) } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

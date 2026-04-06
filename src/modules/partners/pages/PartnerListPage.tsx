@@ -14,11 +14,13 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { usePartners } from '../api'
 import { ORG_TYPE_OPTIONS } from '../types'
 
 export function PartnerListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.PARTNERS_MANAGE)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
@@ -55,7 +57,7 @@ export function PartnerListPage() {
       {isLoading ? <TableSkeleton rows={6} columns={5} /> : partners.length === 0 ? (
         <EmptyState icon={Building2} title="No partners found"
           description={search ? 'Try adjusting your search.' : 'Add your first partner organization.'}
-          action={!search ? { label: 'Add Partner', onClick: () => navigate('/partners/new') } : undefined}
+          action={!search && canCreate ? { label: 'Add Partner', onClick: () => navigate('/partners/new') } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

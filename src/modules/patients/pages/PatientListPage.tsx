@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
+import { usePermission } from '@/lib/permissions/hooks'
 import { P } from '@/lib/permissions/constants'
 import { usePatients } from '../api'
 import { formatDate } from '@/lib/utils/date'
@@ -20,6 +21,7 @@ import { ROUTES } from '@/config/routes'
 
 export function PatientListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.PATIENTS_CREATE)
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [portalFilter, setPortalFilter] = useState<string>('all')
@@ -85,7 +87,7 @@ export function PatientListPage() {
           icon={Users}
           title="No patients found"
           description={search ? 'Try adjusting your search or filters.' : 'Register your first patient to get started.'}
-          action={!search ? { label: 'Register Patient', onClick: () => navigate(ROUTES.PATIENT_NEW) } : undefined}
+          action={!search && canCreate ? { label: 'Register Patient', onClick: () => navigate(ROUTES.PATIENT_NEW) } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

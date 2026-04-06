@@ -33,6 +33,13 @@ const passwordSchema = z.object({
 type ProfileForm = z.infer<typeof profileSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
 
+/**
+ * Personal profile page — accessible to ALL authenticated users.
+ * This is NOT an admin settings page. It covers:
+ * - Viewing own account info (email, role, permissions count)
+ * - Editing own display name
+ * - Changing own password
+ */
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
   const permissions = useAuthStore((s) => s.permissions)

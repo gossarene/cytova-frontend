@@ -14,12 +14,14 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { QuantityIndicator } from '../components/QuantityIndicator'
 import { useStockItems, useStockCategories } from '../api'
 import { cn } from '@/lib/utils'
 
 export function StockListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.STOCK_MANAGE)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [thresholdFilter, setThresholdFilter] = useState<string>('all')
@@ -69,7 +71,7 @@ export function StockListPage() {
       {isLoading ? <TableSkeleton rows={8} columns={6} /> : items.length === 0 ? (
         <EmptyState icon={Package} title="No stock items found"
           description={search ? 'Try adjusting your search.' : 'Add your first stock item.'}
-          action={!search ? { label: 'Add Item', onClick: () => navigate('/stock/new') } : undefined}
+          action={!search && canCreate ? { label: 'Add Item', onClick: () => navigate('/stock/new') } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

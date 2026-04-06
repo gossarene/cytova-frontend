@@ -15,7 +15,7 @@ export function useSuppliers(params?: Record<string, string>) {
   return useQuery({
     queryKey: ['suppliers', params],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<SupplierListItem[]>>('/suppliers/', { params })
+      const { data } = await api.get<ApiResponse<SupplierListItem[]>>('/procurement/suppliers/', { params })
       return data
     },
   })
@@ -25,7 +25,7 @@ export function useSupplier(id: string) {
   return useQuery({
     queryKey: ['suppliers', id],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<SupplierDetail>>(`/suppliers/${id}/`)
+      const { data } = await api.get<ApiResponse<SupplierDetail>>(`/procurement/suppliers/${id}/`)
       return data.data
     },
     enabled: !!id,
@@ -36,7 +36,7 @@ export function useCreateSupplier() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: Record<string, unknown>) => {
-      const { data } = await api.post<ApiResponse<SupplierDetail>>('/suppliers/', p)
+      const { data } = await api.post<ApiResponse<SupplierDetail>>('/procurement/suppliers/', p)
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
@@ -47,7 +47,7 @@ export function useUpdateSupplier(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: Record<string, unknown>) => {
-      const { data } = await api.patch<ApiResponse<SupplierDetail>>(`/suppliers/${id}/`, p)
+      const { data } = await api.patch<ApiResponse<SupplierDetail>>(`/procurement/suppliers/${id}/`, p)
       return data.data
     },
     onSuccess: () => {
@@ -60,7 +60,7 @@ export function useUpdateSupplier(id: string) {
 export function useDeactivateSupplier(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async () => { await api.post(`/suppliers/${id}/deactivate/`) },
+    mutationFn: async () => { await api.post(`/procurement/suppliers/${id}/deactivate/`) },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
   })
 }
@@ -69,7 +69,7 @@ export function useActiveSuppliers() {
   return useQuery({
     queryKey: ['suppliers', 'active'],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<SupplierListItem[]>>('/suppliers/', { params: { is_active: 'true' } })
+      const { data } = await api.get<ApiResponse<SupplierListItem[]>>('/procurement/suppliers/', { params: { is_active: 'true' } })
       return data.data
     },
     staleTime: 5 * 60_000,
@@ -84,7 +84,7 @@ export function usePurchaseOrders(params?: Record<string, string>) {
   return useQuery({
     queryKey: ['purchase-orders', params],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<POListItem[]>>('/purchase-orders/', { params })
+      const { data } = await api.get<ApiResponse<POListItem[]>>('/procurement/purchase-orders/', { params })
       return data
     },
   })
@@ -94,7 +94,7 @@ export function usePurchaseOrder(id: string) {
   return useQuery({
     queryKey: ['purchase-orders', id],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<PODetail>>(`/purchase-orders/${id}/`)
+      const { data } = await api.get<ApiResponse<PODetail>>(`/procurement/purchase-orders/${id}/`)
       return data.data
     },
     enabled: !!id,
@@ -105,7 +105,7 @@ export function useCreatePurchaseOrder() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: Record<string, unknown>) => {
-      const { data } = await api.post<ApiResponse<PODetail>>('/purchase-orders/', p)
+      const { data } = await api.post<ApiResponse<PODetail>>('/procurement/purchase-orders/', p)
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['purchase-orders'] }),
@@ -116,7 +116,7 @@ export function useConfirmPO(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<ApiResponse<PODetail>>(`/purchase-orders/${id}/confirm/`)
+      const { data } = await api.post<ApiResponse<PODetail>>(`/procurement/purchase-orders/${id}/confirm/`)
       return data.data
     },
     onSuccess: () => {
@@ -130,7 +130,7 @@ export function useCancelPO(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<ApiResponse<PODetail>>(`/purchase-orders/${id}/cancel/`)
+      const { data } = await api.post<ApiResponse<PODetail>>(`/procurement/purchase-orders/${id}/cancel/`)
       return data.data
     },
     onSuccess: () => {
@@ -144,7 +144,7 @@ export function useClosePO(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<ApiResponse<PODetail>>(`/purchase-orders/${id}/close/`)
+      const { data } = await api.post<ApiResponse<PODetail>>(`/procurement/purchase-orders/${id}/close/`)
       return data.data
     },
     onSuccess: () => {
@@ -160,7 +160,7 @@ export function useAddPOItem(orderId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: { stock_item_id: string; ordered_quantity: string; unit_price?: string; notes?: string }) => {
-      const { data } = await api.post<ApiResponse<POItemRead>>(`/purchase-orders/${orderId}/items/`, p)
+      const { data } = await api.post<ApiResponse<POItemRead>>(`/procurement/purchase-orders/${orderId}/items/`, p)
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['purchase-orders', orderId] }),
@@ -171,7 +171,7 @@ export function useRemovePOItem(orderId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (itemId: string) => {
-      await api.delete(`/purchase-orders/${orderId}/items/${itemId}/`)
+      await api.delete(`/procurement/purchase-orders/${orderId}/items/${itemId}/`)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['purchase-orders', orderId] }),
   })
@@ -185,7 +185,7 @@ export function useReceptions(orderId: string) {
   return useQuery({
     queryKey: ['purchase-orders', orderId, 'receptions'],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<ReceptionListItem[]>>(`/purchase-orders/${orderId}/receptions/`)
+      const { data } = await api.get<ApiResponse<ReceptionListItem[]>>(`/procurement/purchase-orders/${orderId}/receptions/`)
       return data
     },
     enabled: !!orderId,
@@ -196,7 +196,7 @@ export function useReception(orderId: string, receptionId: string) {
   return useQuery({
     queryKey: ['purchase-orders', orderId, 'receptions', receptionId],
     queryFn: async () => {
-      const { data } = await api.get<ApiResponse<ReceptionDetail>>(`/purchase-orders/${orderId}/receptions/${receptionId}/`)
+      const { data } = await api.get<ApiResponse<ReceptionDetail>>(`/procurement/purchase-orders/${orderId}/receptions/${receptionId}/`)
       return data.data
     },
     enabled: !!orderId && !!receptionId,
@@ -207,7 +207,7 @@ export function useCreateReception(orderId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: Record<string, unknown>) => {
-      const { data } = await api.post<ApiResponse<ReceptionDetail>>(`/purchase-orders/${orderId}/receptions/`, p)
+      const { data } = await api.post<ApiResponse<ReceptionDetail>>(`/procurement/purchase-orders/${orderId}/receptions/`, p)
       return data.data
     },
     onSuccess: () => {

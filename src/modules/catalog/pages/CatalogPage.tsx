@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
+import { usePermission } from '@/lib/permissions/hooks'
 import { P } from '@/lib/permissions/constants'
 import { CategorySidebar } from '../components/CategorySidebar'
 import { CategoryDialog } from '../components/CategoryDialog'
@@ -23,6 +24,7 @@ import { formatCurrency } from '@/lib/utils/currency'
 
 export function CatalogPage() {
   const navigate = useNavigate()
+  const canManage = usePermission(P.CATALOG_MANAGE)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sampleFilter, setSampleFilter] = useState<string>('all')
@@ -96,7 +98,7 @@ export function CatalogPage() {
               icon={FlaskConical}
               title="No exams found"
               description={search || selectedCategory ? 'Try adjusting your search or category.' : 'Add your first exam definition.'}
-              action={!search ? { label: 'Add Exam', onClick: () => setShowExamDialog(true) } : undefined}
+              action={!search && canManage ? { label: 'Add Exam', onClick: () => setShowExamDialog(true) } : undefined}
             />
           ) : (
             <div className="rounded-lg border">

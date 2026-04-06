@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { ROLE_LABELS } from '@/lib/auth/types'
 import { useUsers } from '../api'
 import { formatDate } from '@/lib/utils/date'
@@ -21,6 +22,7 @@ import { ROUTES } from '@/config/routes'
 
 export function UserListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.USERS_CREATE)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -69,7 +71,7 @@ export function UserListPage() {
       {isLoading ? <TableSkeleton rows={6} columns={5} /> : users.length === 0 ? (
         <EmptyState icon={UserCog} title="No users found"
           description={search ? 'Try different filters.' : 'Invite your first team member.'}
-          action={!search ? { label: 'Add User', onClick: () => navigate(ROUTES.USER_NEW) } : undefined}
+          action={!search && canCreate ? { label: 'Add User', onClick: () => navigate(ROUTES.USER_NEW) } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

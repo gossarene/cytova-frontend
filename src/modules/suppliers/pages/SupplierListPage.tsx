@@ -13,10 +13,12 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { useSuppliers } from '../api'
 
 export function SupplierListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.SUPPLIERS_MANAGE)
   const [search, setSearch] = useState('')
 
   const params: Record<string, string> = {}
@@ -42,7 +44,7 @@ export function SupplierListPage() {
       {isLoading ? <TableSkeleton rows={6} columns={5} /> : suppliers.length === 0 ? (
         <EmptyState icon={Truck} title="No suppliers found"
           description={search ? 'Try a different search.' : 'Add your first supplier.'}
-          action={!search ? { label: 'Add Supplier', onClick: () => navigate('/suppliers/new') } : undefined}
+          action={!search && canCreate ? { label: 'Add Supplier', onClick: () => navigate('/suppliers/new') } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

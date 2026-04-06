@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
+import { usePermission } from '@/lib/permissions/hooks'
 import { usePurchaseOrders } from '../api'
 import { formatDate } from '@/lib/utils/date'
 
@@ -21,6 +22,7 @@ const STATUSES = ['all', 'DRAFT', 'CONFIRMED', 'PARTIALLY_RECEIVED', 'RECEIVED',
 
 export function POListPage() {
   const navigate = useNavigate()
+  const canCreate = usePermission(P.PROCUREMENT_MANAGE)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -56,7 +58,7 @@ export function POListPage() {
       {isLoading ? <TableSkeleton rows={6} columns={6} /> : orders.length === 0 ? (
         <EmptyState icon={ShoppingCart} title="No purchase orders"
           description={search ? 'Try adjusting your search.' : 'Create your first purchase order.'}
-          action={!search ? { label: 'New Order', onClick: () => navigate('/procurement/new') } : undefined}
+          action={!search && canCreate ? { label: 'New Order', onClick: () => navigate('/procurement/new') } : undefined}
         />
       ) : (
         <div className="rounded-lg border">

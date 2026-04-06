@@ -41,6 +41,7 @@ export const ROUTES = {
   USER_DETAIL: '/users/:id',
   AUDIT: '/audit',
   SETTINGS: '/settings',
+  PROFILE: '/profile',
 
   // Platform Admin
   PLATFORM_LOGIN: '/platform/login',

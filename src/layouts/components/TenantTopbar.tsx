@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -47,27 +48,33 @@ export function TenantTopbar() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">
-                {user.firstName} {user.lastName}
-              </span>
-              <span className="text-xs text-muted-foreground">{user.email}</span>
-              <span className="text-xs text-muted-foreground mt-0.5">
-                {ROLE_LABELS[user.role]}
-              </span>
-            </div>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {user.firstName} {user.lastName}
+                </span>
+                <span className="text-xs text-muted-foreground">{user.email}</span>
+                <span className="text-xs text-muted-foreground mt-0.5">
+                  {ROLE_LABELS[user.role]}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate(ROUTES.SETTINGS)}>
-            <User className="mr-2 h-4 w-4" />
-            Profile
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)}>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

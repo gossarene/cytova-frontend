@@ -90,6 +90,9 @@ const AuditLogPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/modules/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
+const ProfilePage = lazy(() =>
+  import('@/pages/auth/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+)
 
 function Loading() {
   return (
@@ -120,13 +123,21 @@ export const tenantRoutes: RouteObject[] = [
               // Dashboard — accessible to all authenticated users
               { path: ROUTES.DASHBOARD, element: lazyPage(DashboardPage) },
 
+              // Profile — accessible to all authenticated users (personal account, not admin)
+              { path: ROUTES.PROFILE, element: lazyPage(ProfilePage) },
+
               // Patients
               {
                 element: <PermissionGuard permission={P.PATIENTS_VIEW} />,
                 children: [
                   { path: ROUTES.PATIENTS, element: lazyPage(PatientListPage) },
-                  { path: ROUTES.PATIENT_NEW, element: lazyPage(PatientCreatePage) },
                   { path: ROUTES.PATIENT_DETAIL, element: lazyPage(PatientDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.PATIENTS_CREATE} />,
+                children: [
+                  { path: ROUTES.PATIENT_NEW, element: lazyPage(PatientCreatePage) },
                 ],
               },
 
@@ -135,8 +146,13 @@ export const tenantRoutes: RouteObject[] = [
                 element: <PermissionGuard permission={P.REQUESTS_VIEW} />,
                 children: [
                   { path: ROUTES.REQUESTS, element: lazyPage(RequestListPage) },
-                  { path: ROUTES.REQUEST_NEW, element: lazyPage(RequestCreatePage) },
                   { path: ROUTES.REQUEST_DETAIL, element: lazyPage(RequestDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.REQUESTS_CREATE} />,
+                children: [
+                  { path: ROUTES.REQUEST_NEW, element: lazyPage(RequestCreatePage) },
                 ],
               },
 
@@ -191,8 +207,13 @@ export const tenantRoutes: RouteObject[] = [
                 element: <PermissionGuard permission={P.PARTNERS_VIEW} />,
                 children: [
                   { path: ROUTES.PARTNERS, element: lazyPage(PartnerListPage) },
-                  { path: ROUTES.PARTNER_NEW, element: lazyPage(PartnerCreatePage) },
                   { path: ROUTES.PARTNER_DETAIL, element: lazyPage(PartnerDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.PARTNERS_MANAGE} />,
+                children: [
+                  { path: ROUTES.PARTNER_NEW, element: lazyPage(PartnerCreatePage) },
                 ],
               },
 
@@ -209,8 +230,13 @@ export const tenantRoutes: RouteObject[] = [
                 element: <PermissionGuard permission={P.USERS_VIEW} />,
                 children: [
                   { path: ROUTES.USERS, element: lazyPage(UserListPage) },
-                  { path: ROUTES.USER_NEW, element: lazyPage(UserCreatePage) },
                   { path: ROUTES.USER_DETAIL, element: lazyPage(UserDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.USERS_CREATE} />,
+                children: [
+                  { path: ROUTES.USER_NEW, element: lazyPage(UserCreatePage) },
                 ],
               },
 
