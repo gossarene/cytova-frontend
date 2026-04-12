@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { FlaskConical, DollarSign, Settings2, Ban } from 'lucide-react'
+import { FlaskConical, DollarSign, Settings2, Ban, UtensilsCrossed, Pencil } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +13,10 @@ import { CardSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
 import { PricingRulesTable } from '../components/PricingRulesTable'
-import { useExamDefinition, useDeactivateExamDefinition, usePricingRules } from '../api'
+import { ExamDefinitionDialog } from '../components/ExamDefinitionDialog'
+import {
+  useExamDefinition, useDeactivateExamDefinition, usePricingRules, useFamilies,
+} from '../api'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDateTime } from '@/lib/utils/date'
 import { ROUTES } from '@/config/routes'
@@ -24,6 +27,12 @@ export function ExamDetailPage() {
   const { data: rulesData, isLoading: rulesLoading } = usePricingRules({ exam_definition_id: id! })
   const deactivateMut = useDeactivateExamDefinition(id!)
   const [showDeactivate, setShowDeactivate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  // Families feed the edit dialog's family dropdown. Fetched here rather
+  // than in the dialog so the dialog stays purely stateless with respect
+  // to its required reference data.
+  const { data: famData } = useFamilies({ is_active: 'true' })
+  const families = famData?.data ?? []
 
   if (error) return <ErrorState onRetry={refetch} />
 
@@ -53,6 +62,10 @@ export function ExamDetailPage() {
         ]}
       >
         <Can permission={P.CATALOG_MANAGE}>
+          <Button variant="outline" className="gap-2" onClick={() => setShowEdit(true)}>
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
           {exam.is_active && (
             <Button variant="destructive" className="gap-2" onClick={() => setShowDeactivate(true)}>
               <Ban className="h-4 w-4" />
@@ -71,22 +84,34 @@ export function ExamDetailPage() {
                 <FlaskConical className="h-4 w-4 text-muted-foreground" />
                 Exam Definition
               </CardTitle>
-              <Badge
-                variant="outline"
-                className={exam.is_active
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-red-200 bg-red-50 text-red-600'}
-              >
-                {exam.is_active ? 'Active' : 'Inactive'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {exam.fasting_required && (
+                  <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-700 text-xs">
+                    <UtensilsCrossed className="h-3 w-3" />
+                    Fasting
+                  </Badge>
+                )}
+                <Badge
+                  variant="outline"
+                  className={exam.is_active
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-red-200 bg-red-50 text-red-600'}
+                >
+                  {exam.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Code" value={exam.code} mono />
-              <Field label="Category" value={exam.category.name} />
+              <Field label="Family" value={exam.family?.name ?? exam.category?.name ?? '\u2014'} />
+              {exam.sub_family && <Field label="Sub-family" value={exam.sub_family.name} />}
               <Field label="Sample Type" value={exam.sample_type} />
+              {exam.tube_type && <Field label="Tube Type" value={exam.tube_type.name} />}
+              {exam.technique && <Field label="Technique" value={exam.technique.name} />}
               <Field label="Turnaround" value={exam.turnaround_hours ? `${exam.turnaround_hours}h` : 'Not set'} />
+              <Field label="Fasting Required" value={exam.fasting_required ? 'Yes' : 'No'} />
             </div>
             {exam.description && (
               <>
@@ -176,6 +201,21 @@ export function ExamDetailPage() {
         variant="destructive"
         onConfirm={handleDeactivate}
         isLoading={deactivateMut.isPending}
+      />
+
+      {/*
+        Edit dialog is keyed on the exam id so each open is a fresh
+        dialog instance — clean form state, clean one-shot hydration.
+        The dialog fetches the detail itself via ``useExamDefinition`` and
+        React Query serves it straight from cache (this page already
+        populated that cache), so there is no loading flash.
+      */}
+      <ExamDefinitionDialog
+        key={showEdit ? `edit-${exam.id}` : 'edit-closed'}
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        families={families}
+        editExamId={exam.id}
       />
     </div>
   )

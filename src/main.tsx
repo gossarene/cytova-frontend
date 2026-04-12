@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { hydrateAuth } from '@/lib/auth/store'
 import { hydratePlatformAuth } from '@/lib/auth/platform-store'
 import { App } from './App'
+import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
 
 // Hydrate auth state from localStorage before first render

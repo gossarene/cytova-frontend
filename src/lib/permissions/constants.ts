@@ -8,6 +8,7 @@ export const P = {
   PATIENTS_CREATE: 'patients.create',
   PATIENTS_UPDATE: 'patients.update',
   PATIENTS_DEACTIVATE: 'patients.deactivate',
+  PATIENTS_UPDATE_IDENTITY: 'patients.update_identity',
   PATIENTS_MANAGE_PORTAL: 'patients.manage_portal',
 
   // Catalog
@@ -24,12 +25,15 @@ export const P = {
   REQUESTS_UPDATE: 'requests.update',
   REQUESTS_CONFIRM: 'requests.confirm',
   REQUESTS_CANCEL: 'requests.cancel',
+  REQUESTS_FINALIZE: 'requests.finalize_validation',
 
   // Results
   RESULTS_VIEW: 'results.view',
   RESULTS_CREATE: 'results.create',
   RESULTS_UPDATE: 'results.update',
+  RESULTS_SUBMIT: 'results.submit',
   RESULTS_VALIDATE: 'results.validate',
+  RESULTS_REJECT: 'results.reject',
   RESULTS_PUBLISH: 'results.publish',
 
   // Partners

@@ -1,32 +1,56 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/shared/FormField'
-import { GENDER_OPTIONS } from '../types'
+import { CountryCombobox } from '@/components/shared/CountryCombobox'
+import { PhoneInput } from '@/components/shared/PhoneInput'
+import { GENDER_OPTIONS, DOCUMENT_TYPE_OPTIONS } from '../types'
+import type { DocumentType } from '../types'
 import type { ApiError } from '@/lib/api/types'
 
-const formSchema = z.object({
-  national_id: z.string().max(100).optional().or(z.literal('')),
+const DOCUMENT_TYPES = DOCUMENT_TYPE_OPTIONS.map((o) => o.value) as [string, ...string[]]
+
+/** Fields editable by any user with patients.update */
+const editableFields = {
   first_name: z.string().min(1, 'First name is required').max(100),
   last_name: z.string().min(1, 'Last name is required').max(100),
   date_of_birth: z.string().min(1, 'Date of birth is required'),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER'], { message: 'Gender is required' }),
+  gender: z.enum(['MALE', 'FEMALE'], { message: 'Gender is required' }),
+  nationality: z.string().max(100).optional().or(z.literal('')),
   phone: z.string().max(30).optional().or(z.literal('')),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
+  city_of_residence: z.string().max(150).optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
   insurance_number: z.string().max(100).optional().or(z.literal('')),
-})
+}
 
-export type PatientFormData = z.infer<typeof formSchema>
+/** Identity fields — required on create, optional on edit (only included when user has permission) */
+const identityFields = {
+  document_type: z.enum(DOCUMENT_TYPES, { message: 'Document type is required' }),
+  document_number: z.string().min(1, 'Document number is required').max(100),
+}
+
+const identityFieldsOptional = {
+  document_type: z.enum(DOCUMENT_TYPES).optional(),
+  document_number: z.string().max(100).optional().or(z.literal('')),
+}
+
+const createSchema = z.object({ ...identityFields, ...editableFields })
+const editSchema = z.object(editableFields)
+const editWithIdentitySchema = z.object({ ...identityFieldsOptional, ...editableFields })
+
+export type PatientFormData = z.infer<typeof createSchema>
 
 interface PatientFormProps {
   mode: 'create' | 'edit'
+  /** Whether the user can edit document_type and document_number (patients.update_identity) */
+  canEditIdentity?: boolean
   defaultValues?: Partial<PatientFormData>
   onSubmit: (data: PatientFormData) => Promise<void>
   onCancel: () => void
@@ -35,15 +59,17 @@ interface PatientFormProps {
 
 export function PatientForm({
   mode,
+  canEditIdentity = false,
   defaultValues,
   onSubmit,
   onCancel,
   isSubmitting,
 }: PatientFormProps) {
-  // For create mode, national_id is required via custom validation
   const schema = mode === 'create'
-    ? formSchema.refine((d) => !!d.national_id, { message: 'National ID is required', path: ['national_id'] })
-    : formSchema
+    ? createSchema
+    : canEditIdentity
+      ? editWithIdentitySchema
+      : editSchema
 
   const {
     register,
@@ -55,13 +81,16 @@ export function PatientForm({
   } = useForm<PatientFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      national_id: '',
+      document_type: undefined,
+      document_number: '',
       first_name: '',
       last_name: '',
       date_of_birth: '',
       gender: undefined,
+      nationality: '',
       phone: '',
       email: '',
+      city_of_residence: '',
       address: '',
       insurance_number: '',
       ...defaultValues,
@@ -81,30 +110,76 @@ export function PatientForm({
           }
         }
       }
-      throw err // Re-throw so the caller knows it failed
+      throw err
     }
   }
 
+  const showIdentityFields = mode === 'create' || true // always show in both modes
+  const identityEditable = mode === 'create' || canEditIdentity
+  const docTypeLabel = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === watch('document_type'))?.label
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      {/* Identity section */}
+      {/* Identification section */}
       <div>
-        <h3 className="text-sm font-semibold mb-1">Identity</h3>
+        <h3 className="text-sm font-semibold mb-1">Identification</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Core identification fields.{mode === 'create' && ' National ID cannot be changed after creation.'}
+          {mode === 'create'
+            ? 'Official identification document. Document type and number cannot be changed after registration.'
+            : 'Official identification document.'}
         </p>
 
         <div className="space-y-4">
-          {mode === 'create' && (
-            <FormField
-              label="National ID"
-              htmlFor="national_id"
-              required
-              error={errors.national_id?.message}
-              hint="Government-issued identifier. Must be unique within this laboratory."
-            >
-              <Input id="national_id" placeholder="e.g. FR123456" autoFocus {...register('national_id')} />
-            </FormField>
+          {showIdentityFields && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Document type" htmlFor="document_type" required={mode === 'create'} error={errors.document_type?.message}>
+                  {identityEditable ? (
+                    <Select
+                      value={watch('document_type') ?? ''}
+                      onValueChange={(v) => {
+                        if (v) setValue('document_type', v as DocumentType, { shouldValidate: true })
+                      }}
+                    >
+                      <SelectTrigger id="document_type">
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input id="document_type" value={docTypeLabel ?? ''} disabled className="bg-muted" />
+                  )}
+                </FormField>
+                <FormField
+                  label="Document number"
+                  htmlFor="document_number"
+                  required={mode === 'create'}
+                  error={errors.document_number?.message}
+                  hint={mode === 'create' ? 'Number shown on the selected identification document.' : undefined}
+                >
+                  <Input
+                    id="document_number"
+                    placeholder={identityEditable ? 'e.g. CI-001234567' : ''}
+                    autoFocus={mode === 'create'}
+                    disabled={!identityEditable}
+                    className={!identityEditable ? 'bg-muted' : ''}
+                    {...register('document_number')}
+                  />
+                </FormField>
+              </div>
+              {mode === 'edit' && !canEditIdentity && (
+                <div className="flex items-center gap-2 rounded-md border border-muted bg-muted/30 px-3 py-2">
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Identity document fields require special permission to edit.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -124,7 +199,7 @@ export function PatientForm({
               <Select
                 value={watch('gender') ?? ''}
                 onValueChange={(v) => {
-                  if (v) setValue('gender', v as 'MALE' | 'FEMALE' | 'OTHER', { shouldValidate: true })
+                  if (v) setValue('gender', v as 'MALE' | 'FEMALE', { shouldValidate: true })
                 }}
               >
                 <SelectTrigger id="gender">
@@ -138,29 +213,48 @@ export function PatientForm({
               </Select>
             </FormField>
           </div>
+
+          <FormField label="Nationality" htmlFor="nationality" error={errors.nationality?.message}>
+            <CountryCombobox
+              id="nationality"
+              value={watch('nationality') ?? ''}
+              onChange={(name) => setValue('nationality', name, { shouldValidate: true })}
+              placeholder="Select nationality..."
+            />
+          </FormField>
         </div>
       </div>
 
       <Separator />
 
-      {/* Contact section */}
+      {/* Contact & Residence section */}
       <div>
-        <h3 className="text-sm font-semibold mb-1">Contact Information</h3>
+        <h3 className="text-sm font-semibold mb-1">Contact & Residence</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Optional. Used for appointment reminders and portal account creation.
+          Contact details and place of residence.
         </p>
 
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
-              <Input id="phone" type="tel" placeholder="+33 6 12 34 56 78" {...register('phone')} />
+              <PhoneInput
+                id="phone"
+                value={watch('phone') ?? ''}
+                onChange={(v) => setValue('phone', v, { shouldValidate: true })}
+                placeholder="07 12 34 56 78"
+              />
             </FormField>
             <FormField label="Email" htmlFor="email" error={errors.email?.message}>
               <Input id="email" type="email" placeholder="patient@email.com" {...register('email')} />
             </FormField>
           </div>
-          <FormField label="Address" htmlFor="address" error={errors.address?.message}>
-            <Textarea id="address" rows={2} placeholder="Street, city, postal code" {...register('address')} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="City of residence" htmlFor="city_of_residence" error={errors.city_of_residence?.message}>
+              <Input id="city_of_residence" placeholder="e.g. Abidjan" {...register('city_of_residence')} />
+            </FormField>
+          </div>
+          <FormField label="Address" htmlFor="address" error={errors.address?.message} hint="Full postal address.">
+            <Textarea id="address" rows={2} placeholder="Street, neighborhood, postal code" {...register('address')} />
           </FormField>
         </div>
       </div>

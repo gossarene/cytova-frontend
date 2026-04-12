@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/shared/FormField'
-import { useCreateCategory, useUpdateCategory } from '../api'
-import type { ExamCategoryListItem } from '../types'
+import { useCreateFamily, useUpdateFamily } from '../api'
+import type { ExamFamilyItem } from '../types'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(150),
@@ -24,37 +24,41 @@ type FormData = z.infer<typeof schema>
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editCategory?: ExamCategoryListItem | null
+  editFamily?: ExamFamilyItem | null
 }
 
-export function CategoryDialog({ open, onOpenChange, editCategory }: Props) {
-  const isEdit = !!editCategory
-  const createMut = useCreateCategory()
-  const updateMut = useUpdateCategory(editCategory?.id ?? '')
+export function FamilyDialog({ open, onOpenChange, editFamily }: Props) {
+  const isEdit = !!editFamily
+  const createMut = useCreateFamily()
+  const updateMut = useUpdateFamily(editFamily?.id ?? '')
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: editCategory?.name ?? '',
-      description: editCategory?.description ?? '',
-      display_order: String(editCategory?.display_order ?? 0),
+      name: editFamily?.name ?? '',
+      description: editFamily?.description ?? '',
+      display_order: String(editFamily?.display_order ?? 0),
     },
   })
 
   async function onSubmit(data: FormData) {
-    const payload = { ...data, display_order: parseInt(data.display_order || '0', 10) }
+    const payload = {
+      name: data.name,
+      description: data.description || '',
+      display_order: parseInt(data.display_order || '0', 10),
+    }
     try {
       if (isEdit) {
         await updateMut.mutateAsync(payload)
-        toast.success('Category updated.')
+        toast.success('Family updated.')
       } else {
         await createMut.mutateAsync(payload)
-        toast.success('Category created.')
+        toast.success('Family created.')
       }
       reset()
       onOpenChange(false)
     } catch {
-      toast.error(`Failed to ${isEdit ? 'update' : 'create'} category.`)
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} family.`)
     }
   }
 
@@ -64,20 +68,22 @@ export function CategoryDialog({ open, onOpenChange, editCategory }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Category' : 'New Category'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Family' : 'New Family'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update category details.' : 'Create a new exam category for your catalog.'}
+            {isEdit
+              ? 'Update family details.'
+              : 'Create a new exam family (e.g. Hematology, Biochemistry).'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField label="Name" htmlFor="cat-name" required error={errors.name?.message}>
-            <Input id="cat-name" placeholder="e.g. Hematology" autoFocus {...register('name')} />
+          <FormField label="Name" htmlFor="fam-name" required error={errors.name?.message}>
+            <Input id="fam-name" placeholder="e.g. Hematology" autoFocus {...register('name')} />
           </FormField>
-          <FormField label="Description" htmlFor="cat-desc" error={errors.description?.message}>
-            <Textarea id="cat-desc" rows={2} placeholder="Optional description" {...register('description')} />
+          <FormField label="Description" htmlFor="fam-desc" error={errors.description?.message}>
+            <Textarea id="fam-desc" rows={2} placeholder="Optional description" {...register('description')} />
           </FormField>
-          <FormField label="Display order" htmlFor="cat-order" error={errors.display_order?.message} hint="Lower numbers appear first.">
-            <Input id="cat-order" type="number" {...register('display_order')} />
+          <FormField label="Display order" htmlFor="fam-order" error={errors.display_order?.message} hint="Lower numbers appear first.">
+            <Input id="fam-order" type="number" {...register('display_order')} />
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

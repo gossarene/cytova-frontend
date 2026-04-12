@@ -15,7 +15,7 @@ import { TableSkeleton } from '@/components/shared/LoadingSkeleton'
 import { useResults } from '../api'
 import { formatDate } from '@/lib/utils/date'
 
-const STATUS_OPTIONS = ['all', 'DRAFT', 'PENDING_VALIDATION', 'VALIDATED', 'PUBLISHED']
+const STATUS_OPTIONS = ['all', 'DRAFT', 'SUBMITTED', 'REJECTED', 'VALIDATED', 'PUBLISHED']
 
 export function ResultListPage() {
   const navigate = useNavigate()

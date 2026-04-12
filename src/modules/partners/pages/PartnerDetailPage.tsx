@@ -13,6 +13,7 @@ import { CardSkeleton } from '@/components/shared/LoadingSkeleton'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
 import { PartnerForm } from '../components/PartnerForm'
+import { PartnerExamPricesSection } from '../components/PartnerExamPricesSection'
 import { usePartner, useUpdatePartner, useDeactivatePartner } from '../api'
 import { formatDateTime } from '@/lib/utils/date'
 import { ROUTES } from '@/config/routes'
@@ -120,6 +121,14 @@ export function PartnerDetailPage() {
           </Card>
         </div>
       )}
+
+      {/*
+        Agreed-price management is rendered below the identity/billing
+        cards and only in the read view — inline edit mode is already
+        quite tall, and agreed prices are a separate reference concept
+        that should not compete with the partner form for focus.
+      */}
+      {!editing && <PartnerExamPricesSection partnerId={partner.id} />}
 
       <ConfirmDialog open={showDeactivate} onOpenChange={setShowDeactivate} title="Deactivate partner"
         description={`"${partner.name}" will be hidden from new requests. Existing requests are not affected.`}

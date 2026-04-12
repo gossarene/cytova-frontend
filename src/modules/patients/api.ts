@@ -11,6 +11,7 @@ import type {
 export interface PatientListParams {
   search?: string
   is_active?: string
+  gender?: string
   has_portal_account?: string
   ordering?: string
   cursor?: string
@@ -82,6 +83,51 @@ export function useDeactivatePatient(id: string) {
       qc.invalidateQueries({ queryKey: ['patients', id] })
       qc.invalidateQueries({ queryKey: ['patients'] })
     },
+  })
+}
+
+// -- Patient requests --
+
+export interface PatientRequestItem {
+  id: string
+  request_number: string
+  status: string
+  source_type: string
+  partner_organization_name: string | null
+  items_count: number
+  created_at: string
+}
+
+export interface PatientRequestStats {
+  total_requests: number
+  requests_by_status: Record<string, number>
+  requests_by_source: Record<string, number>
+}
+
+export function usePatientRequests(patientId: string, limit = 5) {
+  return useQuery({
+    queryKey: ['patients', patientId, 'requests', limit],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<PatientRequestItem[]>>(
+        `/patients/${patientId}/requests/`,
+        { params: { limit } },
+      )
+      return data.data ?? []
+    },
+    enabled: !!patientId,
+  })
+}
+
+export function usePatientRequestStats(patientId: string) {
+  return useQuery({
+    queryKey: ['patients', patientId, 'request-stats'],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<PatientRequestStats>>(
+        `/patients/${patientId}/request-stats/`,
+      )
+      return data.data
+    },
+    enabled: !!patientId,
   })
 }
 

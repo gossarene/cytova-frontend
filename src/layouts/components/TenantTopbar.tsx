@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { LogOut, User } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,11 +40,11 @@ export function TenantTopbar() {
   return (
     <header className="flex h-14 items-center justify-end border-b bg-card px-6 gap-4">
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button variant="ghost" className="gap-2 px-2">
-            <UserAvatar firstName={user.firstName || user.email.charAt(0)} lastName={user.lastName || ''} size="sm" />
-            <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
-          </Button>
+        <DropdownMenuTrigger
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground gap-2 px-2 h-8"
+        >
+          <UserAvatar firstName={user.firstName || user.email.charAt(0)} lastName={user.lastName || ''} size="sm" />
+          <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuGroup>

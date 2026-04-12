@@ -1,8 +1,19 @@
 // -- Sample types --
+//
+// The canonical source of truth is the backend /catalog/sample-types/ endpoint
+// (see useSampleTypes()). The literal union below is kept only as a TypeScript
+// narrow so exam-detail payloads stay strictly typed; the fallback array is used
+// when the hook is not available (e.g. during initial render). Do not extend
+// without a matching backend migration.
 
 export type SampleType = 'BLOOD' | 'URINE' | 'STOOL' | 'CSF' | 'SWAB' | 'SALIVA' | 'TISSUE' | 'OTHER'
 
-export const SAMPLE_TYPE_OPTIONS: { value: SampleType; label: string }[] = [
+export interface SampleTypeOption {
+  value: string
+  label: string
+}
+
+export const SAMPLE_TYPE_FALLBACK: SampleTypeOption[] = [
   { value: 'BLOOD', label: 'Blood' },
   { value: 'URINE', label: 'Urine' },
   { value: 'STOOL', label: 'Stool' },
@@ -13,7 +24,49 @@ export const SAMPLE_TYPE_OPTIONS: { value: SampleType; label: string }[] = [
   { value: 'OTHER', label: 'Other' },
 ]
 
-// -- Categories --
+/**
+ * @deprecated Use `useSampleTypes()` instead. Kept as an alias so existing
+ * imports compile while the migration proceeds.
+ */
+export const SAMPLE_TYPE_OPTIONS = SAMPLE_TYPE_FALLBACK
+
+// -- Reference data --
+
+export interface ExamFamilyItem {
+  id: string
+  name: string
+  description: string
+  display_order: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface ExamSubFamilyItem {
+  id: string
+  family_id: string
+  family_name?: string
+  name: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface TubeTypeItem {
+  id: string
+  name: string
+  description: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface ExamTechniqueItem {
+  id: string
+  name: string
+  description: string
+  is_active: boolean
+  created_at: string
+}
+
+// -- Legacy categories (kept for backward compatibility) --
 
 export interface ExamCategoryListItem {
   id: string
@@ -34,13 +87,25 @@ export interface ExamDefinitionListItem {
   id: string
   code: string
   name: string
-  category_id: string
-  category_name: string
+  // New structured fields
+  family_id: string | null
+  family_name: string | null
+  sub_family_id: string | null
+  sub_family_name: string | null
+  tube_type_id: string | null
+  tube_type_name: string | null
+  technique_id: string | null
+  technique_name: string | null
+  fasting_required: boolean
+  // Core fields
   sample_type: SampleType
   turnaround_hours: number | null
   unit_price: string
   is_active: boolean
   is_enabled: boolean
+  // Legacy
+  category_id: string | null
+  category_name: string | null
   created_at: string
 }
 
@@ -57,13 +122,21 @@ export interface ExamDefinitionDetail {
   id: string
   code: string
   name: string
-  category: ExamCategoryListItem
+  // New structured fields
+  family: ExamFamilyItem | null
+  sub_family: ExamSubFamilyItem | null
+  tube_type: TubeTypeItem | null
+  technique: ExamTechniqueItem | null
+  fasting_required: boolean
+  // Core fields
   sample_type: SampleType
   turnaround_hours: number | null
   description: string
   unit_price: string
   is_active: boolean
   lab_settings: LabExamSettings | null
+  // Legacy
+  category: ExamCategoryListItem | null
   created_at: string
   updated_at: string
 }

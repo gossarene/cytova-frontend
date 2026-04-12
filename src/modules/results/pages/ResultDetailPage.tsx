@@ -173,7 +173,7 @@ export function ResultDetailPage() {
                   <div className="grid gap-4 sm:grid-cols-2 text-sm">
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">Request: <span className="font-mono">{result.request_number}</span></p>
-                      <p className="text-xs text-muted-foreground">Created by: {result.created_by_email || '—'}</p>
+                      <p className="text-xs text-muted-foreground">Entered by: {result.entered_by_email || '—'}</p>
                       <p className="text-xs text-muted-foreground">Created: {formatDateTime(result.created_at)}</p>
                     </div>
                     <div className="space-y-2">

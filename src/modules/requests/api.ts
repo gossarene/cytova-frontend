@@ -4,6 +4,8 @@ import type { ApiResponse } from '@/lib/api/types'
 import type {
   RequestListItem, RequestDetail, RequestItemDetail,
   RequestCreatePayload, RequestItemInput,
+  ResolvedItemPrice, SourceType,
+  RequestLabelBatch,
 } from './types'
 
 // -- Requests --
@@ -40,6 +42,56 @@ export function useCreateRequest() {
   })
 }
 
+/**
+ * Resolve pricing for a tentative (source, partner, exams) tuple WITHOUT
+ * persisting anything. Used by the Step 3 recap of the request creation
+ * wizard — both this hook and the final ``useCreateRequest`` call hit the
+ * same backend ``RequestPricingResolver``, so the recap matches what will
+ * be snapshotted into request items on confirmation.
+ *
+ * ``useQuery`` is used (not ``useMutation``) because the preview is
+ * idempotent and we want React Query to cache per-parameter so that
+ * going back to Step 2 and returning to Step 3 with the same selections
+ * hits the cache instead of re-fetching.
+ */
+export function usePricingPreview(
+  params: {
+    source_type: SourceType
+    partner_organization_id?: string | null
+    exam_definition_ids: string[]
+  },
+  options?: { enabled?: boolean },
+) {
+  const sortedIds = [...params.exam_definition_ids].sort()
+  return useQuery({
+    queryKey: [
+      'requests', 'preview-pricing',
+      params.source_type,
+      params.partner_organization_id ?? null,
+      sortedIds,
+    ],
+    queryFn: async () => {
+      const { data } = await api.post<ApiResponse<{ items: ResolvedItemPrice[] }>>(
+        '/requests/preview-pricing/',
+        {
+          source_type: params.source_type,
+          partner_organization_id: params.partner_organization_id || null,
+          exam_definition_ids: params.exam_definition_ids,
+        },
+      )
+      return data.data
+    },
+    enabled:
+      (options?.enabled ?? true)
+      && params.exam_definition_ids.length > 0
+      && (
+        params.source_type === 'DIRECT_PATIENT'
+        || !!params.partner_organization_id
+      ),
+    staleTime: 30_000,
+  })
+}
+
 export function useUpdateRequest(id: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -64,6 +116,22 @@ export function useConfirmRequest(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['requests', id] })
       qc.invalidateQueries({ queryKey: ['requests'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useFinalizeValidation(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ApiResponse<RequestDetail>>(`/requests/${id}/finalize-validation/`)
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', id] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
+      qc.invalidateQueries({ queryKey: ['results'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
@@ -150,6 +218,22 @@ export function useCompleteItem(requestId: string, itemId: string) {
   })
 }
 
+export function useMarkItemCollected(requestId: string, itemId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload?: { collection_notes?: string }) => {
+      const { data } = await api.post<ApiResponse<RequestItemDetail>>(
+        `/requests/${requestId}/items/${itemId}/mark-collected/`,
+        payload ?? {},
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+    },
+  })
+}
+
 export function useRejectItem(requestId: string, itemId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -161,5 +245,55 @@ export function useRejectItem(requestId: string, itemId: string) {
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['requests', requestId] }),
+  })
+}
+
+// ============================================================
+// Request Labels
+//   GET  /requests/:id/labels/  → existing batch or 404
+//   POST /requests/:id/labels/  → idempotent generate-or-get
+//
+// Both endpoints return the same Cytova envelope shape; the read hook
+// treats a 404 as "no batch yet" and resolves to ``null`` so the UI
+// can distinguish "not generated" from "loading" without swallowing
+// other errors.
+// ============================================================
+
+export function useRequestLabels(requestId: string) {
+  return useQuery({
+    queryKey: ['requests', requestId, 'labels'],
+    queryFn: async (): Promise<RequestLabelBatch | null> => {
+      try {
+        const { data } = await api.get<ApiResponse<RequestLabelBatch>>(
+          `/requests/${requestId}/labels/`,
+        )
+        return data.data
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })
+          ?.response?.status
+        if (status === 404) return null
+        throw err
+      }
+    },
+    enabled: !!requestId,
+    // Signed URL in the response body has a short TTL — keep the query
+    // result fresh so a click-to-download always uses a valid URL.
+    staleTime: 60_000,
+  })
+}
+
+export function useGenerateRequestLabels(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RequestLabelBatch> => {
+      const { data } = await api.post<ApiResponse<RequestLabelBatch>>(
+        `/requests/${requestId}/labels/`,
+      )
+      return data.data
+    },
+    onSuccess: (batch) => {
+      qc.setQueryData(['requests', requestId, 'labels'], batch)
+      qc.invalidateQueries({ queryKey: ['requests', requestId, 'labels'] })
+    },
   })
 }

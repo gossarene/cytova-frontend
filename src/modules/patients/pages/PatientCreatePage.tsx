@@ -13,7 +13,8 @@ export function PatientCreatePage() {
   async function handleSubmit(data: PatientFormData) {
     const patient = await mutation.mutateAsync({
       ...data,
-      national_id: data.national_id!, // Required in create mode (validated by form)
+      document_type: data.document_type!,
+      document_number: data.document_number!,
     })
     toast.success(`Patient ${patient.full_name} registered successfully.`)
     navigate(`/patients/${patient.id}`)

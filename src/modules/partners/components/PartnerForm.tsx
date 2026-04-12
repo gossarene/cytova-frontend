@@ -70,7 +70,14 @@ export function PartnerForm({ mode, defaultValues, onSubmit, onCancel, isSubmitt
               <Input id="partner-name" placeholder="Clinique du Nord" autoFocus={mode === 'edit'} {...register('name')} />
             </FormField>
             <FormField label="Type" htmlFor="partner-type" required error={errors.organization_type?.message}>
-              <Select value={watch('organization_type')} onValueChange={(v) => { if (v) setValue('organization_type', v, { shouldValidate: true }) }}>
+              <Select
+                value={watch('organization_type')}
+                onValueChange={(v) => { if (v) setValue('organization_type', v, { shouldValidate: true }) }}
+                // Base UI ``items`` makes <SelectValue> render the human
+                // label (e.g. "Medical Center") in the closed trigger
+                // instead of the raw enum code ("MEDICAL_CENTER").
+                items={ORG_TYPE_OPTIONS}
+              >
                 <SelectTrigger id="partner-type"><SelectValue placeholder="Select type" /></SelectTrigger>
                 <SelectContent>
                   {ORG_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -110,7 +117,13 @@ export function PartnerForm({ mode, defaultValues, onSubmit, onCancel, isSubmitt
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Default billing mode" htmlFor="partner-billing" error={errors.default_billing_mode?.message}>
-              <Select value={watch('default_billing_mode') ?? ''} onValueChange={(v) => setValue('default_billing_mode', v ?? '')}>
+              <Select
+                value={watch('default_billing_mode') ?? ''}
+                onValueChange={(v) => setValue('default_billing_mode', v ?? '')}
+                // Same ``items`` fix: the trigger renders "On Account"
+                // rather than "ON_ACCOUNT" once the user picks a value.
+                items={BILLING_MODE_OPTIONS}
+              >
                 <SelectTrigger id="partner-billing"><SelectValue placeholder="Select mode" /></SelectTrigger>
                 <SelectContent>
                   {BILLING_MODE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}

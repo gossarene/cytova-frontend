@@ -3,7 +3,7 @@ import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/api/types'
 import type { ResultListItem, ResultDetail, ResultFile, SignedDownloadURL } from './types'
 
-// -- Results --
+// -- Result Versions --
 
 export function useResults(params?: Record<string, string>) {
   return useQuery({
@@ -26,18 +26,37 @@ export function useResult(id: string) {
   })
 }
 
+export function useItemCurrentResult(itemId: string) {
+  return useQuery({
+    queryKey: ['results', 'item', itemId, 'current'],
+    queryFn: async (): Promise<ResultDetail | null> => {
+      const { data } = await api.get<ApiResponse<ResultListItem[]>>('/results/', {
+        params: { item_id: itemId, is_current: 'true' },
+      })
+      const list = data.data
+      if (!list || list.length === 0) return null
+      const detail = await api.get<ApiResponse<ResultDetail>>(`/results/${list[0].id}/`)
+      return detail.data.data
+    },
+    enabled: !!itemId,
+  })
+}
+
 export function useCreateResult() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: {
       item_id: string; result_value?: string; result_unit?: string
       reference_range?: string; is_abnormal?: boolean
-      comments?: string; internal_notes?: string
+      comments?: string; internal_notes?: string; notes?: string
     }) => {
       const { data } = await api.post<ApiResponse<ResultDetail>>('/results/', payload)
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['results'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['results'] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
+    },
   })
 }
 
@@ -63,8 +82,8 @@ export function useSubmitResult(id: string) {
       return data.data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['results', id] })
       qc.invalidateQueries({ queryKey: ['results'] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
     },
   })
 }
@@ -79,25 +98,25 @@ export function useValidateResult(id: string) {
       return data.data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['results', id] })
       qc.invalidateQueries({ queryKey: ['results'] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
 
-export function useRejectValidation(id: string) {
+export function useRejectResult(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (notes: string) => {
-      const { data } = await api.post<ApiResponse<ResultDetail>>(`/results/${id}/reject-validation/`, {
-        validation_notes: notes,
+      const { data } = await api.post<ApiResponse<ResultDetail>>(`/results/${id}/reject/`, {
+        rejection_notes: notes,
       })
       return data.data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['results', id] })
       qc.invalidateQueries({ queryKey: ['results'] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
     },
   })
 }
@@ -110,8 +129,8 @@ export function usePublishResult(id: string) {
       return data.data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['results', id] })
       qc.invalidateQueries({ queryKey: ['results'] })
+      qc.invalidateQueries({ queryKey: ['requests'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })

@@ -35,3 +35,27 @@ export interface PartnerDetail extends PartnerListItem {
   notes: string
   updated_at: string
 }
+
+/**
+ * Row shape returned by the nested endpoints at
+ * /api/v1/partners/{partner_id}/exam-prices/ — both list and write
+ * responses use this shape (the backend has one serializer for both).
+ *
+ * Prices are serialised as strings to preserve decimal precision across
+ * the wire; formatting is done at render time.
+ */
+export interface PartnerExamPriceItem {
+  id: string
+  partner_id: string
+  partner_code: string
+  partner_name: string
+  exam_definition_id: string
+  exam_code: string
+  exam_name: string
+  reference_unit_price: string
+  agreed_price: string
+  notes: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}

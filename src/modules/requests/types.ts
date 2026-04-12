@@ -1,9 +1,13 @@
-export type RequestStatus = 'DRAFT' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
-export type ItemStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED'
+export type RequestStatus = 'DRAFT' | 'CONFIRMED' | 'COLLECTION_IN_PROGRESS' | 'IN_ANALYSIS' | 'AWAITING_REVIEW' | 'RETEST_REQUIRED' | 'READY_FOR_RELEASE' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type ItemStatus = 'PENDING' | 'COLLECTED' | 'RESULT_ENTERED' | 'UNDER_REVIEW' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED'
 export type ExecutionMode = 'INTERNAL' | 'SUBCONTRACTED' | 'REJECTED'
 export type SourceType = 'DIRECT_PATIENT' | 'PARTNER_ORGANIZATION'
 export type RequestBillingMode = 'DIRECT_PAYMENT' | 'PARTNER_BILLING'
-export type PriceSource = 'DEFAULT_PRICE' | 'PRICING_RULE' | 'MANUAL_OVERRIDE'
+export type PriceSource =
+  | 'DEFAULT_PRICE'
+  | 'PARTNER_AGREED_PRICE'
+  | 'PRICING_RULE'
+  | 'MANUAL_OVERRIDE'
 
 export const SOURCE_TYPE_OPTIONS: { value: SourceType; label: string }[] = [
   { value: 'DIRECT_PATIENT', label: 'Direct Patient' },
@@ -23,8 +27,23 @@ export const EXECUTION_MODE_OPTIONS: { value: ExecutionMode; label: string }[] =
 
 export const PRICE_SOURCE_LABELS: Record<PriceSource, string> = {
   DEFAULT_PRICE: 'Catalog default',
+  PARTNER_AGREED_PRICE: 'Partner agreed price',
   PRICING_RULE: 'Pricing rule',
   MANUAL_OVERRIDE: 'Manual override',
+}
+
+/**
+ * Shape returned by the backend pricing preview endpoint
+ * (``POST /api/v1/requests/preview-pricing/``). The exam id order in the
+ * response mirrors the order of ``exam_definition_ids`` the client sent.
+ */
+export interface ResolvedItemPrice {
+  exam_definition_id: string
+  exam_code: string
+  exam_name: string
+  unit_price: string
+  billed_price: string
+  price_source: PriceSource
 }
 
 // -- List item --
@@ -59,6 +78,9 @@ export interface RequestItemBrief {
   unit_price: string
   billed_price: string
   price_source: PriceSource
+  collected_at: string | null
+  collected_by_email: string | null
+  collection_notes: string
   created_at: string
 }
 
@@ -111,6 +133,26 @@ export interface RequestItemInput {
   billed_price?: string | null
 }
 
+// -- Request Labels --
+
+export interface RequestLabel {
+  id: string
+  barcode_value: string
+  label_index: number
+  family_name: string
+}
+
+export interface RequestLabelBatch {
+  id: string
+  analysis_request_id: string
+  label_count: number
+  family_count: number
+  generated_at: string
+  generated_by_email: string | null
+  pdf_url: string | null
+  labels: RequestLabel[]
+}
+
 export interface RequestCreatePayload {
   patient_id: string
   notes?: string
@@ -120,4 +162,11 @@ export interface RequestCreatePayload {
   billing_mode?: RequestBillingMode
   source_notes?: string
   items?: RequestItemInput[]
+  /**
+   * When true, the backend creates the request AND transitions it to
+   * CONFIRMED in a single atomic transaction. Used by the 3-step wizard
+   * whose final button semantically means "commit this request". Omit
+   * (or send false) for the legacy draft-edit flow.
+   */
+  confirm?: boolean
 }

@@ -165,7 +165,11 @@ export const tenantRoutes: RouteObject[] = [
                 ],
               },
 
-              // Catalog
+              // Catalog — unified page with internal tabs for exam definitions
+              // and reference data (families, sub-families, tube types,
+              // techniques, sample types). Reads are gated by CATALOG_VIEW;
+              // inside each tab, write buttons/actions are gated by
+              // CATALOG_MANAGE to mirror the backend's IsLabAdmin rule.
               {
                 element: <PermissionGuard permission={P.CATALOG_VIEW} />,
                 children: [

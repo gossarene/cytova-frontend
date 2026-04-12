@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users, Globe } from 'lucide-react'
+import { Plus, Users, FilePlus2 } from 'lucide-react'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchInput } from '@/components/shared/SearchInput'
@@ -16,6 +16,7 @@ import { Can } from '@/lib/permissions/Can'
 import { usePermission } from '@/lib/permissions/hooks'
 import { P } from '@/lib/permissions/constants'
 import { usePatients } from '../api'
+import { GENDER_OPTIONS } from '../types'
 import { formatDate } from '@/lib/utils/date'
 import { ROUTES } from '@/config/routes'
 
@@ -24,12 +25,12 @@ export function PatientListPage() {
   const canCreate = usePermission(P.PATIENTS_CREATE)
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
-  const [portalFilter, setPortalFilter] = useState<string>('all')
+  const [genderFilter, setGenderFilter] = useState<string>('all')
 
   const params: Record<string, string> = {}
   if (search) params.search = search
   if (activeFilter !== 'all') params.is_active = activeFilter
-  if (portalFilter !== 'all') params.has_portal_account = portalFilter
+  if (genderFilter !== 'all') params.gender = genderFilter
 
   const { data, isLoading, error, refetch } = usePatients(params)
   const patients = data?.data ?? []
@@ -53,35 +54,42 @@ export function PatientListPage() {
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <SearchInput
-          placeholder="Search by name or national ID..."
+          placeholder="Search patients..."
           value={search}
           onChange={setSearch}
         />
         <Select value={activeFilter} onValueChange={(v) => setActiveFilter(v ?? 'all')}>
-          <SelectTrigger className="sm:w-36">
-            <SelectValue placeholder="Status" />
+          <SelectTrigger className="sm:w-40">
+            <span className="text-sm">
+              <span className="text-muted-foreground">Status:</span>{' '}
+              {{ all: 'All', true: 'Active', false: 'Inactive' }[activeFilter]}
+            </span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="true">Active</SelectItem>
             <SelectItem value="false">Inactive</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={portalFilter} onValueChange={(v) => setPortalFilter(v ?? 'all')}>
-          <SelectTrigger className="sm:w-40">
-            <SelectValue placeholder="Portal" />
+        <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v ?? 'all')}>
+          <SelectTrigger className="sm:w-44">
+            <span className="text-sm">
+              <span className="text-muted-foreground">Gender:</span>{' '}
+              {genderFilter === 'all' ? 'All' : GENDER_OPTIONS.find((g) => g.value === genderFilter)?.label}
+            </span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Patients</SelectItem>
-            <SelectItem value="true">Has Portal</SelectItem>
-            <SelectItem value="false">No Portal</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+            {GENDER_OPTIONS.map((g) => (
+              <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {/* Table */}
       {isLoading ? (
-        <TableSkeleton rows={8} columns={6} />
+        <TableSkeleton rows={8} columns={5} />
       ) : patients.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -95,11 +103,13 @@ export function PatientListPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Patient</TableHead>
-                <TableHead>National ID</TableHead>
+                <TableHead>Document No.</TableHead>
                 <TableHead>Date of Birth</TableHead>
                 <TableHead>Gender</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Portal</TableHead>
+                <Can permission={P.REQUESTS_CREATE}>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </Can>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,12 +123,14 @@ export function PatientListPage() {
                     <span className="font-medium">{patient.full_name}</span>
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
-                    {patient.national_id}
+                    {patient.document_number}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(patient.date_of_birth)}
                   </TableCell>
-                  <TableCell className="text-sm">{patient.gender}</TableCell>
+                  <TableCell className="text-sm">
+                    {GENDER_OPTIONS.find((g) => g.value === patient.gender)?.label ?? patient.gender}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -129,11 +141,28 @@ export function PatientListPage() {
                       {patient.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    {patient.has_portal_account && (
-                      <Globe className="h-4 w-4 text-primary" />
-                    )}
-                  </TableCell>
+                  <Can permission={P.REQUESTS_CREATE}>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(ROUTES.REQUEST_NEW, {
+                            state: {
+                              patientId: patient.id,
+                              patientName: patient.full_name,
+                              patientDocumentNumber: patient.document_number,
+                            },
+                          })
+                        }}
+                      >
+                        <FilePlus2 className="h-3.5 w-3.5" />
+                        New Request
+                      </Button>
+                    </TableCell>
+                  </Can>
                 </TableRow>
               ))}
             </TableBody>

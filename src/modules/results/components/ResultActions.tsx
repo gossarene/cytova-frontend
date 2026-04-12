@@ -5,11 +5,16 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
 import {
-  useSubmitResult, useValidateResult, useRejectValidation, usePublishResult,
+  useSubmitResult, useValidateResult, useRejectResult, usePublishResult,
 } from '../api'
 import type { ResultStatus } from '../types'
 
@@ -22,7 +27,7 @@ interface Props {
 export function ResultActions({ resultId, status, hasValue }: Props) {
   const submitMut = useSubmitResult(resultId)
   const validateMut = useValidateResult(resultId)
-  const rejectMut = useRejectValidation(resultId)
+  const rejectMut = useRejectResult(resultId)
   const publishMut = usePublishResult(resultId)
 
   const [showValidate, setShowValidate] = useState(false)
@@ -54,7 +59,11 @@ export function ResultActions({ resultId, status, hasValue }: Props) {
       toast.success('Result sent back for revision.')
       setShowReject(false)
       setRejectNotes('')
-    } catch { toast.error('Rejection failed.') }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+        ?.response?.data?.errors?.[0]?.message
+      toast.error(msg || 'Rejection failed.')
+    }
   }
 
   async function handlePublish() {
@@ -92,8 +101,8 @@ export function ResultActions({ resultId, status, hasValue }: Props) {
           </Can>
         )}
 
-        {/* PENDING_VALIDATION → Validate or Reject */}
-        {status === 'PENDING_VALIDATION' && (
+        {/* SUBMITTED → Validate or Reject */}
+        {status === 'SUBMITTED' && (
           <Can permission={P.RESULTS_VALIDATE}>
             <div className="space-y-2">
               <Button
@@ -153,18 +162,36 @@ export function ResultActions({ resultId, status, hasValue }: Props) {
         )}
 
         {/* Reject dialog — requires notes */}
-        {showReject && (
-          <ConfirmDialog
-            open
-            onOpenChange={(open) => { setShowReject(open); if (!open) setRejectNotes('') }}
-            title="Reject result"
-            description="Send this result back to DRAFT for revision. A rejection reason is required."
-            confirmLabel="Reject"
-            variant="destructive"
-            onConfirm={handleReject}
-            isLoading={rejectMut.isPending}
-          />
-        )}
+        <Dialog open={showReject} onOpenChange={(open) => { setShowReject(open); if (!open) setRejectNotes('') }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reject result</DialogTitle>
+              <DialogDescription>
+                Send this result back for revision. A rejection reason is required.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Textarea
+                value={rejectNotes}
+                onChange={(e) => setRejectNotes(e.target.value)}
+                placeholder="Rejection reason (required)…"
+                rows={3}
+              />
+              {showReject && !rejectNotes.trim() && rejectMut.isIdle && (
+                <p className="text-xs text-muted-foreground">A reason is required to reject.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReject(false)} disabled={rejectMut.isPending}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleReject} disabled={rejectMut.isPending}>
+                {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Reject
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Publish dialog — HIGH RISK: requires typing PUBLISH */}
         {showPublish && (
