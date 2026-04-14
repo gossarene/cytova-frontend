@@ -41,6 +41,7 @@ export const ROUTES = {
   USER_DETAIL: '/users/:id',
   AUDIT: '/audit',
   SETTINGS: '/settings',
+  LAB_SETTINGS: '/settings/laboratory',
   PROFILE: '/profile',
 
   // Platform Admin

@@ -110,9 +110,30 @@ export function ExamDetailPage() {
               <Field label="Sample Type" value={exam.sample_type} />
               {exam.tube_type && <Field label="Tube Type" value={exam.tube_type.name} />}
               {exam.technique && <Field label="Technique" value={exam.technique.name} />}
+              <Field label="Result Structure" value={exam.result_structure === 'MULTI_PARAMETER' ? 'Multi-Parameter' : 'Single Value'} />
+              {exam.result_structure === 'SINGLE_VALUE' && exam.unit && <Field label="Unit" value={exam.unit} />}
+              {exam.result_structure === 'SINGLE_VALUE' && exam.reference_range && <Field label="Reference Range" value={exam.reference_range} />}
               <Field label="Turnaround" value={exam.turnaround_hours ? `${exam.turnaround_hours}h` : 'Not set'} />
               <Field label="Fasting Required" value={exam.fasting_required ? 'Yes' : 'No'} />
             </div>
+            {exam.result_structure === 'MULTI_PARAMETER' && exam.parameters && exam.parameters.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Parameters</p>
+                  <div className="rounded border text-sm">
+                    {exam.parameters.filter((p) => p.is_active).map((p) => (
+                      <div key={p.id} className="flex items-center gap-4 px-3 py-1.5 border-b last:border-b-0">
+                        <span className="font-mono text-xs text-muted-foreground w-12">{p.code}</span>
+                        <span className="flex-1">{p.name}</span>
+                        {p.unit && <span className="text-xs text-muted-foreground">{p.unit}</span>}
+                        {p.reference_range && <span className="text-xs text-muted-foreground">{p.reference_range}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
             {exam.description && (
               <>
                 <Separator />

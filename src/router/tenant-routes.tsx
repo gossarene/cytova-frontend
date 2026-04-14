@@ -90,6 +90,9 @@ const AuditLogPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/modules/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
+const LabSettingsPage = lazy(() =>
+  import('@/modules/lab_settings/pages/LabSettingsPage').then((m) => ({ default: m.LabSettingsPage })),
+)
 const ProfilePage = lazy(() =>
   import('@/pages/auth/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
@@ -257,6 +260,7 @@ export const tenantRoutes: RouteObject[] = [
                 element: <PermissionGuard permission={P.SETTINGS_VIEW} />,
                 children: [
                   { path: ROUTES.SETTINGS, element: lazyPage(SettingsPage) },
+                  { path: ROUTES.LAB_SETTINGS, element: lazyPage(LabSettingsPage) },
                 ],
               },
             ],

@@ -83,11 +83,28 @@ export interface ExamCategoryDetail extends ExamCategoryListItem {
 
 // -- Exam Definitions --
 
+export type ResultStructure = 'SINGLE_VALUE' | 'MULTI_PARAMETER'
+
+export const RESULT_STRUCTURE_OPTIONS: { value: ResultStructure; label: string }[] = [
+  { value: 'SINGLE_VALUE', label: 'Single Value' },
+  { value: 'MULTI_PARAMETER', label: 'Multi-Parameter' },
+]
+
+export interface ExamParameterItem {
+  id: string
+  code: string
+  name: string
+  unit: string
+  reference_range: string
+  display_order: number
+  is_active: boolean
+  created_at: string
+}
+
 export interface ExamDefinitionListItem {
   id: string
   code: string
   name: string
-  // New structured fields
   family_id: string | null
   family_name: string | null
   sub_family_id: string | null
@@ -97,13 +114,15 @@ export interface ExamDefinitionListItem {
   technique_id: string | null
   technique_name: string | null
   fasting_required: boolean
-  // Core fields
+  result_structure: ResultStructure
+  unit: string
+  reference_range: string
   sample_type: SampleType
   turnaround_hours: number | null
   unit_price: string
   is_active: boolean
   is_enabled: boolean
-  // Legacy
+  parameters_count: number
   category_id: string | null
   category_name: string | null
   created_at: string
@@ -122,20 +141,21 @@ export interface ExamDefinitionDetail {
   id: string
   code: string
   name: string
-  // New structured fields
   family: ExamFamilyItem | null
   sub_family: ExamSubFamilyItem | null
   tube_type: TubeTypeItem | null
   technique: ExamTechniqueItem | null
   fasting_required: boolean
-  // Core fields
+  result_structure: ResultStructure
+  unit: string
+  reference_range: string
   sample_type: SampleType
   turnaround_hours: number | null
   description: string
   unit_price: string
   is_active: boolean
   lab_settings: LabExamSettings | null
-  // Legacy
+  parameters: ExamParameterItem[]
   category: ExamCategoryListItem | null
   created_at: string
   updated_at: string

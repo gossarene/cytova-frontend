@@ -9,12 +9,13 @@ import { P } from '@/lib/permissions/constants'
 import { api } from '@/lib/api/client'
 import { formatDateTime } from '@/lib/utils/date'
 import { useGenerateRequestLabels, useRequestLabels } from '../api'
-import type { RequestStatus } from '../types'
+import type { RequestStatus, RequestItemBrief } from '../types'
 
 interface Props {
   requestId: string
   requestNumber: string
   requestStatus: RequestStatus
+  items: RequestItemBrief[]
 }
 
 /**
@@ -28,17 +29,16 @@ interface Props {
  * Keeps the UI flat and operational: one card, one primary action at a
  * time, with the permission gate applied to the write action only.
  */
-export function RequestLabelsCard({ requestId, requestNumber, requestStatus }: Props) {
+export function RequestLabelsCard({ requestId, requestNumber, requestStatus, items }: Props) {
   const { data: batch, isLoading } = useRequestLabels(requestId)
   const generate = useGenerateRequestLabels(requestId)
-  // Download state is tracked separately from the generation mutation so
-  // the button can show its own spinner without blocking the rest of the
-  // card. React Query's mutation state is not suitable here because the
-  // download is a one-shot blob fetch rather than a state-changing call.
   const [isDownloading, setIsDownloading] = useState(false)
 
   const isDraft = requestStatus === 'DRAFT'
   const hasBatch = !!batch
+
+  const activeItems = items.filter((i) => i.status !== 'REJECTED')
+  const allCollected = activeItems.length > 0 && activeItems.every((i) => i.status !== 'PENDING')
 
   async function handleGenerate() {
     try {
@@ -141,13 +141,19 @@ export function RequestLabelsCard({ requestId, requestNumber, requestStatus }: P
                 type="button"
                 className="gap-2"
                 onClick={handleDownload}
-                disabled={!batch.pdf_url || isDownloading}
+                disabled={!batch.pdf_url || isDownloading || allCollected}
+                title={allCollected ? 'Labels cannot be downloaded after all specimens are collected.' : undefined}
               >
                 {isDownloading
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <Download className="h-4 w-4" />}
                 Download Labels PDF
               </Button>
+              {allCollected && (
+                <p className="text-xs text-muted-foreground">
+                  All specimens have been collected — labels are no longer needed.
+                </p>
+              )}
             </div>
           </>
         ) : (

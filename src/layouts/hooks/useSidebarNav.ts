@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileCheck, BookOpen,
   Package, Truck, ShoppingCart, Building2, Bell, UserCog,
-  ScrollText, Settings,
+  ScrollText, Settings, Beaker,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth/store'
@@ -57,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Users', href: ROUTES.USERS, icon: UserCog, permission: P.USERS_VIEW },
       { label: 'Audit Log', href: ROUTES.AUDIT, icon: ScrollText, permission: P.AUDIT_VIEW },
       { label: 'Settings', href: ROUTES.SETTINGS, icon: Settings, permission: P.SETTINGS_VIEW },
+      { label: 'Lab Settings', href: ROUTES.LAB_SETTINGS, icon: Beaker, permission: P.SETTINGS_VIEW },
     ],
   },
 ]

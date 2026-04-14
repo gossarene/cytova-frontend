@@ -297,3 +297,31 @@ export function useGenerateRequestLabels(requestId: string) {
     },
   })
 }
+
+// ============================================================
+// Final Patient Report
+//   POST /requests/:id/report/           → generate-or-get
+//   GET  /requests/:id/report/download/  → secure PDF stream
+// ============================================================
+
+export interface RequestReport {
+  id: string
+  generated_at: string
+  generated_by_email: string | null
+  pdf_url: string
+}
+
+export function useGenerateRequestReport(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RequestReport> => {
+      const { data } = await api.post<ApiResponse<RequestReport>>(
+        `/requests/${requestId}/report/`,
+      )
+      return data.data
+    },
+    onSuccess: (report) => {
+      qc.setQueryData(['requests', requestId, 'report'], report)
+    },
+  })
+}

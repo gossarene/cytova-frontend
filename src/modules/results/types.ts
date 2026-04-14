@@ -39,6 +39,17 @@ export interface ResultListItem {
   created_at: string
 }
 
+export interface ResultValueItem {
+  id: string
+  parameter_id: string | null
+  name_snapshot: string
+  value: string
+  unit_snapshot: string
+  reference_range_snapshot: string
+  is_abnormal: boolean
+  display_order: number
+}
+
 export interface ResultDetail {
   id: string
   item_id: string
@@ -68,6 +79,7 @@ export interface ResultDetail {
   published_by_email: string | null
   published_at: string | null
   files: ResultFile[]
+  values: ResultValueItem[]
   created_at: string
   updated_at: string
 }

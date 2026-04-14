@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { Loader2, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContentLarge, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -153,7 +153,7 @@ export function PartnerExamPriceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContentLarge>
         <DialogHeader>
           <DialogTitle>
             {mode === 'edit' ? 'Edit Agreed Price' : 'New Agreed Price'}
@@ -243,7 +243,7 @@ export function PartnerExamPriceDialog({
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </DialogContentLarge>
     </Dialog>
   )
 }

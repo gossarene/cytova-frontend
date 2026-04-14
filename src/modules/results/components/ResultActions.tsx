@@ -163,7 +163,7 @@ export function ResultActions({ resultId, status, hasValue }: Props) {
 
         {/* Reject dialog — requires notes */}
         <Dialog open={showReject} onOpenChange={(open) => { setShowReject(open); if (!open) setRejectNotes('') }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Reject result</DialogTitle>
               <DialogDescription>

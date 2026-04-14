@@ -4,21 +4,15 @@ import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
-  ShieldCheck, ShieldX, ClipboardCheck, User,
-  MessageSquare,
+  ClipboardCheck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ErrorState } from '@/components/shared/ErrorState'
@@ -31,12 +25,11 @@ import {
   useRequest, useConfirmRequest, useCancelRequest,
   useMarkItemCollected, useFinalizeValidation,
 } from '../api'
-import {
-  useItemCurrentResult, useSubmitResult,
-  useValidateResult, useRejectResult,
-} from '@/modules/results/api'
+import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
 import { RequestLabelsCard } from '../components/RequestLabelsCard'
+import { RequestReportCard } from '../components/RequestReportCard'
 import { ResultEntryDialog } from '../components/ResultEntryDialog'
+import { ResultReviewModal } from '../components/ResultReviewModal'
 import type { RequestItemBrief } from '../types'
 import { PRICE_SOURCE_LABELS } from '../types'
 import type { ResultDetail } from '@/modules/results/types'
@@ -55,6 +48,13 @@ const RESULT_ELIGIBLE_ITEM_STATUSES = new Set([
   'COLLECTED', 'RESULT_ENTERED', 'UNDER_REVIEW', 'VALIDATED',
   'IN_PROGRESS', 'COMPLETED',
 ])
+
+function isResultComplete(result: ResultDetail): boolean {
+  if (result.values && result.values.length > 0) {
+    return result.values.some((v) => v.value.trim() !== '')
+  }
+  return !!result.result_value.trim()
+}
 
 const COLLECTED_OR_BEYOND = new Set([
   'COLLECTED', 'RESULT_ENTERED', 'UNDER_REVIEW', 'VALIDATED',
@@ -296,6 +296,13 @@ export function RequestDetailPage() {
         requestId={request.id}
         requestNumber={request.request_number}
         requestStatus={request.status}
+        items={request.items}
+      />
+
+      <RequestReportCard
+        requestId={request.id}
+        requestNumber={request.request_number}
+        requestStatus={request.status}
       />
 
       <ConfirmDialog open={showConfirm} onOpenChange={setShowConfirm}
@@ -386,15 +393,14 @@ function ItemCollectionCell({
 
 
 // ---------------------------------------------------------------------------
-// Item Result Cell — result entry, review, and metadata display
+// Item Result Cell — compact summary + modal trigger
 // ---------------------------------------------------------------------------
 
 function ItemResultCell({ item, requestFinalized }: { item: RequestItemBrief; requestFinalized: boolean }) {
   const canCreate = usePermission(P.RESULTS_CREATE)
   const canSubmit = usePermission(P.RESULTS_SUBMIT)
-  const canValidate = usePermission(P.RESULTS_VALIDATE)
-  const canReject = usePermission(P.RESULTS_REJECT)
   const [showEntryDialog, setShowEntryDialog] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
 
   if (item.status === 'REJECTED') {
     return <span className="text-xs text-muted-foreground">—</span>
@@ -406,48 +412,51 @@ function ItemResultCell({ item, requestFinalized }: { item: RequestItemBrief; re
 
   return (
     <>
-      <ItemResultCellInner
+      <CompactResultCell
         item={item}
         requestFinalized={requestFinalized}
         canCreate={canCreate}
         canSubmit={canSubmit}
-        canValidate={canValidate}
-        canReject={canReject}
-        onOpenEntryDialog={() => setShowEntryDialog(true)}
+        onOpenEntry={() => setShowEntryDialog(true)}
+        onOpenReview={() => setShowReviewModal(true)}
       />
       {showEntryDialog && (
         <ResultEntryDialog
           open={showEntryDialog}
           onOpenChange={setShowEntryDialog}
           itemId={item.id}
+          examDefinitionId={item.exam_definition_id}
           examCode={item.exam_code}
           examName={item.exam_name}
+        />
+      )}
+      {showReviewModal && (
+        <ResultReviewModal
+          open={showReviewModal}
+          onOpenChange={setShowReviewModal}
+          itemId={item.id}
+          examDefinitionId={item.exam_definition_id}
+          examCode={item.exam_code}
+          examName={item.exam_name}
+          requestFinalized={requestFinalized}
         />
       )}
     </>
   )
 }
 
-function ItemResultCellInner({
-  item,
-  requestFinalized,
-  canCreate,
-  canSubmit,
-  canValidate,
-  canReject,
-  onOpenEntryDialog,
+function CompactResultCell({
+  item, requestFinalized, canCreate, canSubmit, onOpenEntry, onOpenReview,
 }: {
   item: RequestItemBrief
   requestFinalized: boolean
   canCreate: boolean
   canSubmit: boolean
-  canValidate: boolean
-  canReject: boolean
-  onOpenEntryDialog: () => void
+  onOpenEntry: () => void
+  onOpenReview: () => void
 }) {
   const { data: result, isLoading } = useItemCurrentResult(item.id)
   const submitMut = useSubmitResult(result?.id ?? '')
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
 
   if (isLoading) {
     return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
@@ -456,14 +465,8 @@ function ItemResultCellInner({
   if (!result) {
     if (!canCreate) return <span className="text-xs text-muted-foreground">No result</span>
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="gap-1.5 text-xs h-7"
-        onClick={onOpenEntryDialog}
-      >
-        <FlaskConical className="h-3 w-3" />
-        Enter Result
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={onOpenEntry}>
+        <FlaskConical className="h-3 w-3" /> Enter Result
       </Button>
     )
   }
@@ -474,21 +477,19 @@ function ItemResultCellInner({
       try {
         await submitMut.mutateAsync()
         toast.success(`Result submitted for review (${item.exam_code}).`)
-      } catch {
-        toast.error('Failed to submit result.')
-      }
+      } catch { toast.error('Failed to submit result.') }
     }
 
     return (
-      <div className="flex flex-col gap-1.5">
-        <ResultSummary result={result} />
+      <div className="flex flex-col gap-1">
+        <StatusBadge status="DRAFT" className="text-[10px] px-1.5 py-0 w-fit" />
         <div className="flex gap-1">
           {canCreate && (
-            <Button size="sm" variant="ghost" className="gap-1 text-xs h-6 px-2" onClick={onOpenEntryDialog}>
+            <Button size="sm" variant="ghost" className="gap-1 text-xs h-6 px-2" onClick={onOpenEntry}>
               <Pencil className="h-3 w-3" /> Edit
             </Button>
           )}
-          {canSubmit && result.result_value.trim() && (
+          {canSubmit && isResultComplete(result) && (
             <Button size="sm" variant="outline" className="gap-1 text-xs h-6 px-2"
               onClick={handleSubmit} disabled={submitMut.isPending}
             >
@@ -501,60 +502,13 @@ function ItemResultCellInner({
     )
   }
 
-  // SUBMITTED — biologist review actions with context
-  if (result.status === 'SUBMITTED') {
-    const reviewActionsAllowed = !requestFinalized && (canValidate || canReject)
-    return (
-      <div className="flex flex-col gap-1.5">
-        <ResultSummary result={result} showContext />
-        {reviewActionsAllowed && (
-          <div className="flex gap-1">
-            {canValidate && (
-              <ValidateButton resultId={result.id} examCode={item.exam_code} />
-            )}
-            {canReject && (
-              <>
-                <Button size="sm" variant="outline"
-                  className="gap-1 text-xs h-6 px-2 text-destructive hover:text-destructive"
-                  onClick={() => setShowRejectDialog(true)}
-                >
-                  <ShieldX className="h-3 w-3" /> Reject
-                </Button>
-                <RejectDialog
-                  open={showRejectDialog}
-                  onOpenChange={setShowRejectDialog}
-                  resultId={result.id}
-                  examCode={item.exam_code}
-                />
-              </>
-            )}
-          </div>
-        )}
-        {!reviewActionsAllowed && result.submitted_by_email && (
-          <p className="text-xs text-muted-foreground">{result.submitted_by_email}</p>
-        )}
-      </div>
-    )
-  }
-
-  // REJECTED — technician re-entry
+  // REJECTED — show status + re-enter
   if (result.status === 'REJECTED') {
     return (
-      <div className="space-y-1">
-        <StatusBadge status="REJECTED" className="text-[10px] px-1.5 py-0" />
-        {result.rejection_notes && (
-          <p className="text-xs text-red-600 truncate max-w-[120px]" title={result.rejection_notes}>
-            {result.rejection_notes}
-          </p>
-        )}
-        {result.rejected_by_email && (
-          <p className="text-xs text-muted-foreground">{result.rejected_by_email}</p>
-        )}
-        {result.rejected_at && (
-          <p className="text-xs text-muted-foreground">{formatDateTime(result.rejected_at)}</p>
-        )}
+      <div className="flex flex-col gap-1">
+        <StatusBadge status="REJECTED" className="text-[10px] px-1.5 py-0 w-fit" />
         {canCreate && !requestFinalized && (
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-6 px-2" onClick={onOpenEntryDialog}>
+          <Button size="sm" variant="outline" className="gap-1 text-xs h-6 px-2" onClick={onOpenEntry}>
             <FlaskConical className="h-3 w-3" /> Re-enter
           </Button>
         )}
@@ -562,200 +516,17 @@ function ItemResultCellInner({
     )
   }
 
-  // VALIDATED — show full context and review metadata
-  if (result.status === 'VALIDATED') {
-    return (
-      <div className="space-y-0.5">
-        <div className="flex items-center gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-          <span className="text-xs font-medium text-blue-700">Validated</span>
-        </div>
-        <p className="text-xs font-mono text-muted-foreground">
-          {result.result_value} {result.result_unit}
-        </p>
-        {result.comments && (
-          <p className="text-xs text-muted-foreground italic truncate max-w-[140px]" title={result.comments}>
-            {result.comments}
-          </p>
-        )}
-        {result.validated_by_email && (
-          <p className="text-xs text-muted-foreground">{result.validated_by_email}</p>
-        )}
-        {result.validated_at && (
-          <p className="text-xs text-muted-foreground">{formatDateTime(result.validated_at)}</p>
-        )}
-      </div>
-    )
-  }
-
-  // PUBLISHED — read-only
+  // SUBMITTED / VALIDATED / PUBLISHED — compact + Review button
   return (
-    <div className="space-y-0.5">
-      <StatusBadge status={result.status} className="text-[10px] px-1.5 py-0" />
-      {result.result_value && (
-        <p className="text-xs font-mono text-muted-foreground">
-          {result.result_value} {result.result_unit}
-        </p>
-      )}
+    <div className="flex flex-col gap-1">
+      <StatusBadge status={result.status} className="text-[10px] px-1.5 py-0 w-fit" />
+      <Button size="sm" variant="outline" className="gap-1 text-xs h-6 px-2 w-fit" onClick={onOpenReview}>
+        <FileText className="h-3 w-3" />
+        {result.status === 'SUBMITTED' ? 'Review' : 'View'}
+      </Button>
     </div>
   )
 }
-
-
-// ---------------------------------------------------------------------------
-// Result summary — shows value + context for biologist review
-// ---------------------------------------------------------------------------
-
-function ResultSummary({ result, showContext }: { result: ResultDetail; showContext?: boolean }) {
-  return (
-    <div className="space-y-0.5">
-      <div className="flex items-center gap-1.5">
-        <StatusBadge status={result.status} className="text-[10px] px-1.5 py-0" />
-        {result.result_value && (
-          <span className="text-xs font-mono truncate max-w-[80px]" title={`${result.result_value} ${result.result_unit}`}>
-            {result.result_value} {result.result_unit || ''}
-          </span>
-        )}
-        {result.is_abnormal && (
-          <Badge variant="outline" className="text-[10px] px-1 py-0 border-red-300 text-red-600">ABN</Badge>
-        )}
-      </div>
-      {showContext && (
-        <div className="space-y-0.5 pt-0.5">
-          {result.reference_range && (
-            <p className="text-xs text-muted-foreground">Ref: {result.reference_range}</p>
-          )}
-          {result.comments && (
-            <div className="flex items-start gap-1">
-              <MessageSquare className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground italic truncate max-w-[120px]" title={result.comments}>
-                {result.comments}
-              </p>
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            {result.entered_by_email && (
-              <span className="flex items-center gap-0.5">
-                <User className="h-2.5 w-2.5" /> {result.entered_by_email}
-              </span>
-            )}
-            {result.version_number > 1 && (
-              <span>v{result.version_number}</span>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// ---------------------------------------------------------------------------
-// Validate button
-// ---------------------------------------------------------------------------
-
-function ValidateButton({ resultId, examCode }: { resultId: string; examCode: string }) {
-  const validateMut = useValidateResult(resultId)
-
-  async function handleValidate() {
-    try {
-      await validateMut.mutateAsync('')
-      toast.success(`Result validated for ${examCode}.`)
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-        ?.response?.data?.errors?.[0]?.message
-      toast.error(msg || 'Failed to validate result.')
-    }
-  }
-
-  return (
-    <Button size="sm" variant="outline"
-      className="gap-1 text-xs h-6 px-2"
-      onClick={handleValidate}
-      disabled={validateMut.isPending}
-    >
-      {validateMut.isPending
-        ? <Loader2 className="h-3 w-3 animate-spin" />
-        : <ShieldCheck className="h-3 w-3" />
-      }
-      Validate
-    </Button>
-  )
-}
-
-
-// ---------------------------------------------------------------------------
-// Reject dialog
-// ---------------------------------------------------------------------------
-
-function RejectDialog({
-  open,
-  onOpenChange,
-  resultId,
-  examCode,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  resultId: string
-  examCode: string
-}) {
-  const rejectMut = useRejectResult(resultId)
-  const [reason, setReason] = useState('')
-  const [showError, setShowError] = useState(false)
-
-  async function handleReject() {
-    if (!reason.trim()) {
-      setShowError(true)
-      return
-    }
-    try {
-      await rejectMut.mutateAsync(reason)
-      toast.success(`Result rejected for ${examCode}.`)
-      onOpenChange(false)
-      setReason('')
-      setShowError(false)
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-        ?.response?.data?.errors?.[0]?.message
-      toast.error(msg || 'Failed to reject result.')
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Reject Result</DialogTitle>
-          <DialogDescription>
-            Reject the submitted result for <span className="font-mono text-xs">{examCode}</span>.
-            The technician will need to re-enter a new result.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Textarea
-            value={reason}
-            onChange={(e) => { setReason(e.target.value); setShowError(false) }}
-            placeholder="Rejection reason (required)…"
-            rows={3}
-          />
-          {showError && (
-            <p className="text-xs text-destructive">A rejection reason is required.</p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={rejectMut.isPending}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleReject} disabled={rejectMut.isPending}>
-            {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Reject Result
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className={`mt-0.5 text-sm ${mono ? 'font-mono' : ''}`}>{value}</p></div>

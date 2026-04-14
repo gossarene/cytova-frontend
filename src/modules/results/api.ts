@@ -88,6 +88,21 @@ export function useSubmitResult(id: string) {
   })
 }
 
+export function useUpdateReviewComments(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: { comments?: string; validation_notes?: string }) => {
+      const { data } = await api.patch<ApiResponse<ResultDetail>>(
+        `/results/${id}/review-comments/`, payload,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['results'] })
+    },
+  })
+}
+
 export function useValidateResult(id: string) {
   const qc = useQueryClient()
   return useMutation({
