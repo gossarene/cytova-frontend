@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileCheck, BookOpen,
   Package, Truck, ShoppingCart, Building2, Bell, UserCog,
-  ScrollText, Settings, Beaker,
+  ScrollText, Settings, Beaker, Receipt,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth/store'
@@ -13,6 +13,8 @@ interface NavItem {
   href: string
   icon: LucideIcon
   permission: string
+  /** When true, NavLink uses exact matching (no prefix). */
+  end?: boolean
 }
 
 interface NavSection {
@@ -48,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Network',
     items: [
       { label: 'Partners', href: ROUTES.PARTNERS, icon: Building2, permission: P.PARTNERS_VIEW },
+      { label: 'Invoicing', href: ROUTES.INVOICES, icon: Receipt, permission: P.BILLING_VIEW },
     ],
   },
   {
@@ -56,7 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Alerts', href: ROUTES.ALERTS, icon: Bell, permission: P.ALERTS_VIEW },
       { label: 'Users', href: ROUTES.USERS, icon: UserCog, permission: P.USERS_VIEW },
       { label: 'Audit Log', href: ROUTES.AUDIT, icon: ScrollText, permission: P.AUDIT_VIEW },
-      { label: 'Settings', href: ROUTES.SETTINGS, icon: Settings, permission: P.SETTINGS_VIEW },
+      { label: 'Settings', href: ROUTES.SETTINGS, icon: Settings, permission: P.SETTINGS_VIEW, end: true },
       { label: 'Lab Settings', href: ROUTES.LAB_SETTINGS, icon: Beaker, permission: P.SETTINGS_VIEW },
     ],
   },

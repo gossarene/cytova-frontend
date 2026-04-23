@@ -51,6 +51,7 @@ export interface ResolvedItemPrice {
 export interface RequestListItem {
   id: string
   request_number: string
+  public_reference: string
   patient_id: string
   patient_name: string
   status: RequestStatus
@@ -100,9 +101,19 @@ export interface RequestItemDetail extends RequestItemBrief {
 
 // -- Detail --
 
+export interface CurrentReportMeta {
+  id: string
+  version_number: number
+  generated_at: string
+  generated_by_email: string | null
+  pdf_url: string
+  downloadable: boolean
+}
+
 export interface RequestDetail {
   id: string
   request_number: string
+  public_reference: string
   patient_id: string
   status: RequestStatus
   notes: string
@@ -119,6 +130,10 @@ export interface RequestDetail {
   cancelled_by_email: string | null
   created_by_email: string | null
   items: RequestItemBrief[]
+  // Report availability is served directly on the detail payload so the
+  // UI survives reload without needing a separate round-trip.
+  has_report: boolean
+  current_report: CurrentReportMeta | null
   created_at: string
   updated_at: string
 }

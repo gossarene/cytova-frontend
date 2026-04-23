@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Eye, EyeOff, User, Lock } from 'lucide-react'
+import { Loader2, Eye, EyeOff, User, Lock, PenTool, Upload, Trash2, ImageIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { FormField } from '@/components/shared/FormField'
 import { useAuthStore } from '@/lib/auth/store'
 import { ROLE_LABELS } from '@/lib/auth/types'
 import { api } from '@/lib/api/client'
+import type { ApiResponse } from '@/lib/api/types'
 
 const profileSchema = z.object({
   first_name: z.string().min(1, 'Required').max(100),
@@ -149,6 +150,11 @@ export function SettingsPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Signature — biologists only */}
+          {(user.role === 'BIOLOGIST' || user.role === 'LAB_ADMIN') && (
+            <SignatureCard />
+          )}
         </TabsContent>
 
         <TabsContent value="security" className="mt-6">
@@ -189,5 +195,143 @@ export function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Signature upload card — biologists / lab admins
+// ---------------------------------------------------------------------------
+
+const ALLOWED_SIG_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif'])
+const MAX_SIG_BYTES = 2 * 1024 * 1024
+
+function SignatureCard() {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [hasSignature, setHasSignature] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    api.get<Blob>('/users/me/signature/', { responseType: 'blob' })
+      .then((resp) => {
+        if (!cancelled) {
+          const url = URL.createObjectURL(resp.data)
+          setPreviewUrl(url)
+          setHasSignature(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setHasSignature(false)
+      })
+      .finally(() => { if (!cancelled) setLoaded(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
+  }, [previewUrl])
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!ALLOWED_SIG_TYPES.has(file.type)) {
+      toast.error('Unsupported image type. Use PNG, JPEG or GIF.')
+      return
+    }
+    if (file.size > MAX_SIG_BYTES) {
+      toast.error('File too large. Maximum 2 MB.')
+      return
+    }
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      await api.post<ApiResponse<unknown>>('/users/me/signature/', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(URL.createObjectURL(file))
+      setHasSignature(true)
+      toast.success('Signature uploaded.')
+    } catch {
+      toast.error('Failed to upload signature.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await api.delete('/users/me/signature/')
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+      setHasSignature(false)
+      toast.success('Signature removed.')
+    } catch {
+      toast.error('Failed to remove signature.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const busy = uploading || deleting
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <PenTool className="h-4 w-4 text-muted-foreground" />
+          Signature
+        </CardTitle>
+        <CardDescription>
+          Your signature image is printed on final patient reports that you validate.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start gap-4">
+          <div className="flex h-20 w-36 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/30">
+            {hasSignature && previewUrl ? (
+              <img src={previewUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
+            ) : loaded ? (
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            ) : (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <input
+                ref={inputRef} type="file" className="hidden"
+                accept="image/png,image/jpeg,image/gif"
+                onChange={handleUpload}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={busy}>
+                {uploading
+                  ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  : <Upload className="mr-2 h-4 w-4" />}
+                {hasSignature ? 'Replace' : 'Upload'}
+              </Button>
+              {hasSignature && (
+                <Button type="button" variant="outline" size="sm" onClick={handleDelete} disabled={busy}>
+                  {deleting
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <Trash2 className="mr-2 h-4 w-4" />}
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PNG, JPEG or GIF · up to 2 MB. Your signature is rendered on reports you validate.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

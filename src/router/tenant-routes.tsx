@@ -27,6 +27,15 @@ const ExamDetailPage = lazy(() =>
 const PatientDetailPage = lazy(() =>
   import('@/modules/patients/pages/PatientDetailPage').then((m) => ({ default: m.PatientDetailPage })),
 )
+const InvoiceListPage = lazy(() =>
+  import('@/modules/invoicing/pages/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })),
+)
+const InvoiceCreatePage = lazy(() =>
+  import('@/modules/invoicing/pages/InvoiceCreatePage').then((m) => ({ default: m.InvoiceCreatePage })),
+)
+const InvoiceDetailPage = lazy(() =>
+  import('@/modules/invoicing/pages/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })),
+)
 const PartnerListPage = lazy(() =>
   import('@/modules/partners/pages/PartnerListPage').then((m) => ({ default: m.PartnerListPage })),
 )
@@ -206,6 +215,21 @@ export const tenantRoutes: RouteObject[] = [
                 children: [
                   { path: ROUTES.PROCUREMENT, element: lazyPage(POListPage) },
                   { path: ROUTES.PROCUREMENT_DETAIL, element: lazyPage(PODetailPage) },
+                ],
+              },
+
+              // Invoicing
+              {
+                element: <PermissionGuard permission={P.BILLING_VIEW} />,
+                children: [
+                  { path: ROUTES.INVOICES, element: lazyPage(InvoiceListPage) },
+                  { path: ROUTES.INVOICE_DETAIL, element: lazyPage(InvoiceDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.BILLING_MANAGE} />,
+                children: [
+                  { path: ROUTES.INVOICE_NEW, element: lazyPage(InvoiceCreatePage) },
                 ],
               },
 

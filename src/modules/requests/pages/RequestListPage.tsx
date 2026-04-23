@@ -367,7 +367,7 @@ export function RequestListPage() {
                   onClick={() => navigate(`/requests/${req.id}`)}
                 >
                   <TableCell className="font-mono text-sm font-medium">
-                    {req.request_number}
+                    {req.public_reference}
                   </TableCell>
                   {!hasPatientFilter && (
                     <TableCell className="font-medium">{req.patient_name}</TableCell>

@@ -8,12 +8,15 @@ interface SidebarNavItemProps {
   label: string
   badge?: number
   collapsed?: boolean
+  /** Exact-match mode — prevents prefix matching from activating parent routes. */
+  end?: boolean
 }
 
-export function SidebarNavItem({ href, icon: Icon, label, badge, collapsed }: SidebarNavItemProps) {
+export function SidebarNavItem({ href, icon: Icon, label, badge, collapsed, end }: SidebarNavItemProps) {
   return (
     <NavLink
       to={href}
+      end={end}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',

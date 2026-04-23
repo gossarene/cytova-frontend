@@ -1,3 +1,38 @@
+export type LabelPrintMode = 'A4_SHEET' | 'THERMAL_ROLL'
+
+export interface LabelPrintPreset {
+  id: string
+  code: string
+  name: string
+  print_mode: LabelPrintMode
+  is_system: boolean
+  page_width_mm: number
+  page_height_mm: number
+  label_width_mm: number
+  label_height_mm: number
+  margin_top_mm: number
+  margin_left_mm: number
+  horizontal_gap_mm: number
+  vertical_gap_mm: number
+  thermal_gap_mm: number
+  show_barcode: boolean
+  show_numeric_code: boolean
+}
+
+export interface LabelDefaults {
+  page_width_mm: number
+  page_height_mm: number
+  label_width_mm: number
+  label_height_mm: number
+  margin_top_mm: number
+  margin_left_mm: number
+  horizontal_gap_mm: number
+  vertical_gap_mm: number
+  thermal_gap_mm: number
+  show_barcode: boolean
+  show_numeric_code: boolean
+}
+
 export interface LabSettings {
   // Laboratory identity
   lab_name: string
@@ -27,6 +62,31 @@ export interface LabSettings {
   show_signature: boolean
   show_legal_footer: boolean
   show_abnormal_flags: boolean
+
+  // Result PDF protection
+  lab_secret_code: string
+  result_pdf_password_enabled: boolean
+  result_pdf_password_mode: string
+  result_pdf_password_hint: string
+
+  // Billing
+  financial_document_mode: 'INVOICE_ONLY' | 'STATEMENT_ONLY' | 'BOTH'
+  default_invoice_vat_rate: number | null
+
+  // Label printing — effective config (frozen snapshot; see backend)
+  label_print_mode: LabelPrintMode
+  label_preset: string | null
+  label_page_width_mm: number
+  label_page_height_mm: number
+  label_label_width_mm: number
+  label_label_height_mm: number
+  label_margin_top_mm: number
+  label_margin_left_mm: number
+  label_horizontal_gap_mm: number
+  label_vertical_gap_mm: number
+  label_thermal_gap_mm: number
+  label_show_barcode: boolean
+  label_show_numeric_code: boolean
 
   updated_at: string
 }

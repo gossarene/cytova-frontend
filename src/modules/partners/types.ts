@@ -23,6 +23,7 @@ export interface PartnerListItem {
   contact_person: string
   phone: string
   email: string
+  invoice_discount_rate: string | null
   is_active: boolean
   created_at: string
 }

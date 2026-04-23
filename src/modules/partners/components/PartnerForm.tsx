@@ -20,6 +20,7 @@ const schema = z.object({
   address: z.string().optional().or(z.literal('')),
   default_billing_mode: z.string().optional().or(z.literal('')),
   payment_terms_days: z.string().optional().or(z.literal('')),
+  invoice_discount_rate: z.string().optional().or(z.literal('')),
   billing_notes: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
 })
@@ -48,6 +49,8 @@ export function PartnerForm({ mode, defaultValues, onSubmit, onCancel, isSubmitt
     const payload: Record<string, unknown> = { ...data }
     if (data.payment_terms_days) payload.payment_terms_days = parseInt(data.payment_terms_days, 10)
     else delete payload.payment_terms_days
+    if (data.invoice_discount_rate) payload.invoice_discount_rate = data.invoice_discount_rate
+    else payload.invoice_discount_rate = null
     if (!data.default_billing_mode) delete payload.default_billing_mode
     if (mode === 'edit') delete payload.code
     await onSubmit(payload)
@@ -134,6 +137,17 @@ export function PartnerForm({ mode, defaultValues, onSubmit, onCancel, isSubmitt
               <Input id="partner-terms" type="number" min="0" placeholder="30" {...register('payment_terms_days')} />
             </FormField>
           </div>
+          <FormField
+            label="Invoice discount rate (%)" htmlFor="partner-discount"
+            hint="Global percentage discount applied on invoice gross total. Leave empty for no discount."
+            error={errors.invoice_discount_rate?.message}
+          >
+            <Input
+              id="partner-discount" type="number" min="0" max="100" step="0.01"
+              placeholder="0.00"
+              {...register('invoice_discount_rate')}
+            />
+          </FormField>
           <FormField label="Billing notes" htmlFor="partner-billing-notes" error={errors.billing_notes?.message}>
             <Textarea id="partner-billing-notes" rows={2} placeholder="Invoice terms, notes..." {...register('billing_notes')} />
           </FormField>

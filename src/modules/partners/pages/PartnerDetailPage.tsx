@@ -75,6 +75,7 @@ export function PartnerDetailPage() {
                 email: partner.email, address: partner.address,
                 default_billing_mode: partner.default_billing_mode ?? '',
                 payment_terms_days: partner.payment_terms_days ? String(partner.payment_terms_days) : '',
+                invoice_discount_rate: partner.invoice_discount_rate ?? '',
                 billing_notes: partner.billing_notes, notes: partner.notes,
               }}
               onSubmit={handleUpdate} onCancel={() => setEditing(false)} isSubmitting={updateMut.isPending}
@@ -116,6 +117,7 @@ export function PartnerDetailPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Default mode</span><span className="font-medium">{partner.default_billing_mode || '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Payment terms</span><span className="font-medium">{partner.payment_terms_days ? `${partner.payment_terms_days} days` : '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Invoice discount</span><span className="font-medium">{partner.invoice_discount_rate ? `${partner.invoice_discount_rate}%` : '—'}</span></div>
               {partner.billing_notes && <><Separator /><p className="text-xs bg-muted p-2 rounded">{partner.billing_notes}</p></>}
             </CardContent>
           </Card>

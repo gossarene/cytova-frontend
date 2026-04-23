@@ -46,6 +46,7 @@ export function TenantSidebar() {
                   icon={item.icon}
                   label={item.label}
                   collapsed={collapsed}
+                  end={item.end}
                 />
               ))}
             </div>

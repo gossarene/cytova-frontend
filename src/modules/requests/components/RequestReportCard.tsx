@@ -1,53 +1,68 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Download, Loader2, FileText } from 'lucide-react'
+import { Download, Loader2, FileText, RefreshCw, History } from 'lucide-react'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
 import { api } from '@/lib/api/client'
 import { formatDateTime } from '@/lib/utils/date'
-import { useGenerateRequestReport } from '../api'
-import type { RequestStatus } from '../types'
+import {
+  useGenerateRequestReport, useRegenerateRequestReport,
+} from '../api'
+import { ReportHistoryDialog } from './ReportHistoryDialog'
+import type { CurrentReportMeta, RequestStatus } from '../types'
 
 interface Props {
   requestId: string
-  requestNumber: string
+  // The patient-facing reference — printed on PDFs, shown on receipts.
+  // The internal ``request_number`` stays in the detail payload for audit
+  // but never appears in this card's copy or filenames.
+  publicReference: string
   requestStatus: RequestStatus
+  // Authoritative report state from the detail payload — survives reload,
+  // avoids local state drift between Generate/Regenerate actions.
+  hasReport: boolean
+  currentReport: CurrentReportMeta | null
 }
 
 /**
  * Final patient report panel.
  *
- * States:
- *   - Request not yet VALIDATED → action disabled with explanatory hint
- *   - Request VALIDATED, no report yet → "Generate Report" (biologist)
- *   - Request VALIDATED, report exists → "Download Report" + metadata
+ * Three operational states, driven exclusively by the detail payload:
+ *   1. Request not yet VALIDATED    → explanatory hint, no actions.
+ *   2. VALIDATED, no report yet     → Generate Report PDF (primary).
+ *   3. VALIDATED, report exists     → Download Report PDF (primary)
+ *                                      + Regenerate (secondary, confirmed).
  *
- * Report lifecycle matches the backend: idempotent generate-or-get.
- * Downloads flow through the protected backend endpoint (never raw media).
+ * Downloads stream through the protected backend endpoint — no raw
+ * media URL is ever constructed on the client.
  */
-export function RequestReportCard({ requestId, requestNumber, requestStatus }: Props) {
+export function RequestReportCard({
+  requestId,
+  publicReference,
+  requestStatus,
+  hasReport,
+  currentReport,
+}: Props) {
   const generate = useGenerateRequestReport(requestId)
+  const regenerate = useRegenerateRequestReport(requestId)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [hasReport, setHasReport] = useState(false)
-  const [reportMeta, setReportMeta] = useState<{ generated_at: string; generated_by_email: string | null } | null>(null)
+  const [showRegenerate, setShowRegenerate] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
 
   const isValidated = requestStatus === 'VALIDATED' || requestStatus === 'COMPLETED'
-  const pdfUrl = `/requests/${requestId}/report/download/`
 
   async function handleGenerate() {
     try {
       const report = await generate.mutateAsync()
-      setHasReport(true)
-      setReportMeta({
-        generated_at: report.generated_at,
-        generated_by_email: report.generated_by_email,
-      })
-      toast.success(`Report generated for ${requestNumber}.`)
+      toast.success(
+        `Report v${report.version_number} generated for ${publicReference}.`,
+      )
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
         ?.response?.data?.errors?.[0]?.message
@@ -55,16 +70,35 @@ export function RequestReportCard({ requestId, requestNumber, requestStatus }: P
     }
   }
 
+  async function handleRegenerate() {
+    setShowRegenerate(false)
+    try {
+      const report = await regenerate.mutateAsync()
+      toast.success(
+        `New report version v${report.version_number} generated for ${publicReference}.`,
+      )
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+        ?.response?.data?.errors?.[0]?.message
+      toast.error(msg || 'Failed to regenerate report.')
+    }
+  }
+
   async function handleDownload() {
+    if (!currentReport) return
     setIsDownloading(true)
     try {
-      const response = await api.get<Blob>(pdfUrl, { responseType: 'blob' })
+      const response = await api.get<Blob>(
+        currentReport.pdf_url,
+        { responseType: 'blob' },
+      )
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const blobUrl = URL.createObjectURL(blob)
       try {
         const anchor = document.createElement('a')
         anchor.href = blobUrl
-        anchor.download = `report_${requestNumber}.pdf`
+        anchor.download =
+          `report_${publicReference}_v${currentReport.version_number}.pdf`
         document.body.appendChild(anchor)
         anchor.click()
         document.body.removeChild(anchor)
@@ -93,11 +127,15 @@ export function RequestReportCard({ requestId, requestNumber, requestStatus }: P
               Final Patient Report
             </CardTitle>
             <CardDescription>
-              Grouped result PDF for the finalized request. Generate once and re-download as needed.
+              Grouped result PDF for the finalized request. Download the current
+              version anytime — regenerate to create a new version while keeping
+              previous ones for traceability.
             </CardDescription>
           </div>
-          {hasReport && (
-            <Badge variant="outline" className="text-xs">Ready</Badge>
+          {hasReport && currentReport && (
+            <Badge variant="outline" className="text-xs">
+              v{currentReport.version_number}
+            </Badge>
           )}
         </div>
       </CardHeader>
@@ -106,31 +144,46 @@ export function RequestReportCard({ requestId, requestNumber, requestStatus }: P
           <p className="text-sm text-muted-foreground">
             The final report can be generated once the request has been validated.
           </p>
-        ) : hasReport && reportMeta ? (
+        ) : hasReport && currentReport ? (
           <>
-            <div className="grid gap-2 text-sm sm:grid-cols-2">
-              <MetadataRow label="Generated" value={formatDateTime(reportMeta.generated_at)} />
-              <MetadataRow label="By" value={reportMeta.generated_by_email ?? '—'} />
+            <div className="grid gap-2 text-sm sm:grid-cols-3">
+              <MetadataRow label="Current version" value={`v${currentReport.version_number}`} />
+              <MetadataRow label="Generated" value={formatDateTime(currentReport.generated_at)} />
+              <MetadataRow label="By" value={currentReport.generated_by_email ?? '—'} />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                The PDF is streamed securely through the backend — no public link is ever created.
+                The PDF is streamed securely through the backend — no public link
+                is ever created. Older versions remain stored for traceability.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button" variant="ghost" size="sm" className="gap-2"
+                  onClick={() => setShowHistory(true)}
+                >
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
                 <Can permission={P.REQUESTS_FINALIZE}>
                   <Button
                     type="button" variant="outline" className="gap-2"
-                    onClick={handleGenerate} disabled={generate.isPending}
+                    onClick={() => setShowRegenerate(true)}
+                    disabled={regenerate.isPending || generate.isPending}
                   >
-                    {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    {regenerate.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <RefreshCw className="h-4 w-4" />}
                     Regenerate
                   </Button>
                 </Can>
                 <Button
                   type="button" className="gap-2"
-                  onClick={handleDownload} disabled={isDownloading}
+                  onClick={handleDownload}
+                  disabled={isDownloading || !currentReport.downloadable}
                 >
-                  {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {isDownloading
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Download className="h-4 w-4" />}
                   Download Report PDF
                 </Button>
               </div>
@@ -146,13 +199,39 @@ export function RequestReportCard({ requestId, requestNumber, requestStatus }: P
                 type="button" className="gap-2"
                 onClick={handleGenerate} disabled={generate.isPending}
               >
-                {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                Generate Report
+                {generate.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <FileText className="h-4 w-4" />}
+                Generate Report PDF
               </Button>
             </Can>
           </div>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={showRegenerate}
+        onOpenChange={setShowRegenerate}
+        title="Regenerate report?"
+        description={
+          currentReport
+            ? `A new version (v${currentReport.version_number + 1}) will be ` +
+              `created and become the current report. Version ` +
+              `v${currentReport.version_number} will remain stored for ` +
+              `traceability and will no longer be downloadable from this page.`
+            : 'A new version will be created. Previous versions remain stored for traceability.'
+        }
+        confirmLabel="Regenerate"
+        onConfirm={handleRegenerate}
+        isLoading={regenerate.isPending}
+      />
+
+      <ReportHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        requestId={requestId}
+        publicReference={publicReference}
+      />
     </Card>
   )
 }

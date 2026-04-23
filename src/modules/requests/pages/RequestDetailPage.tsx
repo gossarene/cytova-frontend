@@ -23,8 +23,9 @@ import { P } from '@/lib/permissions/constants'
 import { useRole, usePermission } from '@/lib/permissions/hooks'
 import {
   useRequest, useConfirmRequest, useCancelRequest,
-  useMarkItemCollected, useFinalizeValidation,
+  useMarkItemCollected, useFinalizeValidation, useRequestLabels,
 } from '../api'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
 import { RequestLabelsCard } from '../components/RequestLabelsCard'
 import { RequestReportCard } from '../components/RequestReportCard'
@@ -74,6 +75,12 @@ export function RequestDetailPage() {
   const canCollect = !!role && COLLECTION_ROLES.has(role)
   const canFinalize = usePermission(P.REQUESTS_FINALIZE)
   const isCollectionPhase = request?.status === 'CONFIRMED' || request?.status === 'COLLECTION_IN_PROGRESS'
+  // Backend rule (see services.AnalysisRequestItemService.mark_collected):
+  // collection is blocked until a RequestLabelBatch exists for the request.
+  // We mirror that rule in the UI so the control reflects reality without
+  // relying on a round-trip error.
+  const { data: labelBatch } = useRequestLabels(id!)
+  const labelsGenerated = !!labelBatch
 
   if (error) return <ErrorState onRetry={refetch} />
   if (isLoading || !request) return <div className="space-y-6"><CardSkeleton /><CardSkeleton /></div>
@@ -120,8 +127,8 @@ export function RequestDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Request ${request.request_number}`}
-        breadcrumbs={[{ label: 'Requests', href: ROUTES.REQUESTS }, { label: request.request_number }]}
+        title={`Request ${request.public_reference}`}
+        breadcrumbs={[{ label: 'Requests', href: ROUTES.REQUESTS }, { label: request.public_reference }]}
       >
         {isDraft && (
           <>
@@ -158,7 +165,7 @@ export function RequestDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Request #" value={request.request_number} mono />
+              <Field label="Request #" value={request.public_reference} mono />
               <Field label="Created by" value={request.created_by_email || '—'} />
             </div>
             {request.notes && <Field label="Notes" value={request.notes} />}
@@ -275,6 +282,7 @@ export function RequestDetailPage() {
                             item={item}
                             requestId={request.id}
                             canCollect={canCollect && isCollectionPhase}
+                            labelsGenerated={labelsGenerated}
                           />
                         </TableCell>
                       )}
@@ -301,23 +309,25 @@ export function RequestDetailPage() {
 
       <RequestReportCard
         requestId={request.id}
-        requestNumber={request.request_number}
+        publicReference={request.public_reference}
         requestStatus={request.status}
+        hasReport={request.has_report}
+        currentReport={request.current_report}
       />
 
       <ConfirmDialog open={showConfirm} onOpenChange={setShowConfirm}
         title="Confirm this request"
-        description={`This will confirm request ${request.request_number} with ${request.items.length} items. Items marked as REJECTED will be zeroed out.`}
+        description={`This will confirm request ${request.public_reference} with ${request.items.length} items. Items marked as REJECTED will be zeroed out.`}
         confirmLabel="Confirm Request" onConfirm={handleConfirm} isLoading={confirmMut.isPending}
       />
       <ConfirmDialog open={showCancel} onOpenChange={setShowCancel}
         title="Cancel this request" variant="destructive"
-        description={`This will cancel request ${request.request_number}. This action cannot be undone.`}
+        description={`This will cancel request ${request.public_reference}. This action cannot be undone.`}
         confirmLabel="Cancel Request" onConfirm={handleCancel} isLoading={cancelMut.isPending}
       />
       <ConfirmDialog open={showFinalize} onOpenChange={setShowFinalize}
         title="Finalize request validation"
-        description={`This will finalize validation for request ${request.request_number}. After finalization, item-level review modifications will no longer be possible.`}
+        description={`This will finalize validation for request ${request.public_reference}. After finalization, item-level review modifications will no longer be possible.`}
         confirmLabel="Finalize Validation" onConfirm={handleFinalize} isLoading={finalizeMut.isPending}
       />
     </div>
@@ -333,10 +343,12 @@ function ItemCollectionCell({
   item,
   requestId,
   canCollect,
+  labelsGenerated,
 }: {
   item: RequestItemBrief
   requestId: string
   canCollect: boolean
+  labelsGenerated: boolean
 }) {
   const markCollected = useMarkItemCollected(requestId, item.id)
 
@@ -371,13 +383,14 @@ function ItemCollectionCell({
       }
     }
 
-    return (
+    const disabled = markCollected.isPending || !labelsGenerated
+    const button = (
       <Button
         size="sm"
         variant="outline"
         className="gap-1.5 text-xs h-7"
         onClick={handleMarkCollected}
-        disabled={markCollected.isPending}
+        disabled={disabled}
       >
         {markCollected.isPending
           ? <Loader2 className="h-3 w-3 animate-spin" />
@@ -386,6 +399,25 @@ function ItemCollectionCell({
         Mark Collected
       </Button>
     )
+
+    if (!labelsGenerated) {
+      // A disabled <Button> swallows pointer events, so wrap in a span
+      // that the tooltip can hook into.
+      return (
+        <Tooltip>
+          <TooltipTrigger
+            render={(props) => (
+              <span {...props} className="inline-block">{button}</span>
+            )}
+          />
+          <TooltipContent side="left" className="max-w-xs">
+            Labels must be generated before specimen collection can be marked.
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+
+    return button
   }
 
   return <span className="text-xs text-muted-foreground">—</span>

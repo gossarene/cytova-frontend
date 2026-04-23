@@ -306,6 +306,8 @@ export function useGenerateRequestLabels(requestId: string) {
 
 export interface RequestReport {
   id: string
+  version_number: number
+  is_current: boolean
   generated_at: string
   generated_by_email: string | null
   pdf_url: string
@@ -320,8 +322,50 @@ export function useGenerateRequestReport(requestId: string) {
       )
       return data.data
     },
-    onSuccess: (report) => {
-      qc.setQueryData(['requests', requestId, 'report'], report)
+    // Invalidate the detail query so ``has_report`` / ``current_report``
+    // on the request payload reflect the new state without an extra
+    // manual round-trip.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+    },
+  })
+}
+
+export interface ReportVersionListItem {
+  id: string
+  version_number: number
+  is_current: boolean
+  generated_at: string
+  generated_by_email: string | null
+  downloadable: boolean
+  pdf_url: string
+}
+
+export function useReportVersions(requestId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['requests', requestId, 'report', 'versions'],
+    enabled,
+    queryFn: async () => {
+      const { data } = await api.get<
+        ApiResponse<{ results: ReportVersionListItem[] }>
+      >(`/requests/${requestId}/report/versions/`)
+      return data.data.results
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useRegenerateRequestReport(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RequestReport> => {
+      const { data } = await api.post<ApiResponse<RequestReport>>(
+        `/requests/${requestId}/report/regenerate/`,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
     },
   })
 }

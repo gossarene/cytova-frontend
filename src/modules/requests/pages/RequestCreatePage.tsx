@@ -72,10 +72,10 @@ export function RequestCreatePage() {
   const [patientId, setPatientId] = useState(prefilled?.patientId ?? '')
   const [patientSearch, setPatientSearch] = useState('')
   const [notes, setNotes] = useState('')
-  const [sourceType, setSourceType] = useState<SourceType>('DIRECT_PATIENT')
+  const [sourceType, setSourceType] = useState<SourceType | ''>('')
   const [partnerId, setPartnerId] = useState<string>('')
   const [externalRef, setExternalRef] = useState('')
-  const [billingMode, setBillingMode] = useState<RequestBillingMode>('DIRECT_PAYMENT')
+  const [billingMode, setBillingMode] = useState<RequestBillingMode | ''>('')
   const [sourceNotes, setSourceNotes] = useState('')
   const [items, setItems] = useState<ItemWithExam[]>([])
   const [examSearch, setExamSearch] = useState('')
@@ -111,11 +111,11 @@ export function RequestCreatePage() {
     error: previewError,
   } = usePricingPreview(
     {
-      source_type: sourceType,
+      source_type: (sourceType || 'DIRECT_PATIENT') as SourceType,
       partner_organization_id: sourceType === 'PARTNER_ORGANIZATION' ? partnerId : null,
       exam_definition_ids: previewExamIds,
     },
-    { enabled: step === 3 },
+    { enabled: step === 3 && !!sourceType },
   )
   const resolvedItems: ResolvedItemPrice[] = previewData?.items ?? []
   const resolvedTotal = resolvedItems.reduce(
@@ -154,7 +154,7 @@ export function RequestCreatePage() {
 
   // Step validation
   const step1Valid = Boolean(patientId) && items.length > 0
-  const step2Valid = sourceType === 'DIRECT_PATIENT' || Boolean(partnerId)
+  const step2Valid = !!sourceType && (sourceType === 'DIRECT_PATIENT' || Boolean(partnerId))
 
   // Navigation
   function goToStep2() {
@@ -164,6 +164,10 @@ export function RequestCreatePage() {
   }
 
   function goToStep3() {
+    if (!sourceType) {
+      toast.error('Please select a source type.')
+      return
+    }
     if (sourceType === 'PARTNER_ORGANIZATION' && !partnerId) {
       toast.error('Please select a partner organization.')
       return
@@ -177,10 +181,10 @@ export function RequestCreatePage() {
       const request = await mutation.mutateAsync({
         patient_id: patientId,
         notes,
-        source_type: sourceType,
+        source_type: sourceType as SourceType,
         partner_organization_id: sourceType === 'PARTNER_ORGANIZATION' ? partnerId : null,
         external_reference: externalRef,
-        billing_mode: billingMode,
+        billing_mode: (billingMode || 'DIRECT_PAYMENT') as RequestBillingMode,
         source_notes: sourceNotes,
         // ``billed_price`` and the ``_exam`` display cache are deliberately
         // omitted: the new 3-step flow defers all pricing to the backend
@@ -198,7 +202,7 @@ export function RequestCreatePage() {
         confirm: true,
       })
       toast.success(
-        `Request ${request.request_number} created and confirmed.`,
+        `Request ${request.public_reference} created and confirmed.`,
       )
       navigate(`/requests/${request.id}`)
     } catch {
@@ -436,7 +440,7 @@ export function RequestCreatePage() {
                         }}
                         items={SOURCE_TYPE_OPTIONS}
                       >
-                        <SelectTrigger id="source-type"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="source-type"><SelectValue placeholder="Select source type" /></SelectTrigger>
                         <SelectContent>
                           {SOURCE_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>

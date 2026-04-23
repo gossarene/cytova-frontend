@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Building2, FileText, Upload, Trash2, ImageIcon } from 'lucide-react'
+import { Loader2, Building2, FileText, Upload, Trash2, ImageIcon, Receipt, Eye, EyeOff } from 'lucide-react'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
@@ -10,6 +10,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { FormField } from '@/components/shared/FormField'
 import { CardSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -20,8 +23,23 @@ import {
   useLabSettings, useUpdateLabSettings,
   useUploadLabLogo, useDeleteLabLogo, useLabLogoPreview,
 } from '../api'
+import { LabelPrintingSettings } from '../components/LabelPrintingSettings'
 import type { LabSettings } from '../types'
 import { ROUTES } from '@/config/routes'
+
+const PDF_PASSWORD_MODE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'PATIENT_DOB', label: 'Patient date of birth' },
+  { value: 'PATIENT_PHONE', label: 'Patient phone number' },
+  { value: 'REQUEST_REFERENCE', label: 'Request reference' },
+  { value: 'DOB_PLUS_PHONE_SUFFIX', label: 'DOB + last 4 digits of phone' },
+  { value: 'DOB_PHONE_SECRET', label: 'DOB + phone suffix + lab secret code' },
+]
+
+const DOC_MODE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'INVOICE_ONLY', label: 'Invoice only' },
+  { value: 'STATEMENT_ONLY', label: 'Financial statement only' },
+  { value: 'BOTH', label: 'Both' },
+]
 
 const DISPLAY_OPTIONS: { key: keyof LabSettings; label: string; hint?: string }[] = [
   { key: 'show_logo', label: 'Laboratory logo' },
@@ -53,6 +71,11 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
 
   function update<K extends keyof LabSettings>(key: K, value: LabSettings[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+    setDirty(true)
+  }
+
+  function updateMany(partial: Partial<LabSettings>) {
+    setForm((prev) => ({ ...prev, ...partial }))
     setDirty(true)
   }
 
@@ -149,17 +172,6 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
           />
 
           <FormField
-            label="Signature file key" htmlFor="signature_file_key"
-            hint="Internal storage key for the validator signature/stamp."
-          >
-            <Input
-              id="signature_file_key" value={form.signature_file_key}
-              onChange={(e) => update('signature_file_key', e.target.value)}
-              className="font-mono text-xs"
-            />
-          </FormField>
-
-          <FormField
             label="Legal / confidentiality footer" htmlFor="legal_footer"
             hint="Printed at the bottom of every report when enabled."
           >
@@ -203,9 +215,178 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Billing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+            Billing
+          </CardTitle>
+          <CardDescription>
+            Tax rate and financial document settings for partner invoicing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              label="Financial document type" htmlFor="doc_mode"
+              hint="Controls which document types can be generated for partner invoices."
+            >
+              <Select
+                value={form.financial_document_mode}
+                onValueChange={(v) => { if (v) update('financial_document_mode', v as never) }}
+                items={DOC_MODE_OPTIONS}
+              >
+                <SelectTrigger id="doc_mode"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DOC_MODE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label="Default invoice VAT rate (%)" htmlFor="vat_rate"
+              hint="Applied on the subtotal after partner discount. Leave empty for no VAT."
+            >
+              <Input
+                id="vat_rate" type="number" min="0" max="100" step="0.01"
+                placeholder="0.00"
+                value={form.default_invoice_vat_rate ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  update('default_invoice_vat_rate', v === '' ? null : parseFloat(v))
+                }}
+              />
+            </FormField>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Result PDF Protection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            Result PDF Protection
+          </CardTitle>
+          <CardDescription>
+            Password-protect generated result PDFs using patient data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <Label htmlFor="pdf-pw-enabled" className="text-sm">Enable PDF password protection</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                When enabled, every generated result PDF requires a password to open.
+              </p>
+            </div>
+            <Switch
+              id="pdf-pw-enabled"
+              checked={form.result_pdf_password_enabled}
+              onCheckedChange={(v) => update('result_pdf_password_enabled', v as never)}
+            />
+          </div>
+          {form.result_pdf_password_enabled && (
+            <PdfProtectionFields form={form} update={update} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Label Printing */}
+      <LabelPrintingSettings
+        form={form}
+        update={(key, value) => update(key as keyof LabSettings, value as never)}
+        updateMany={updateMany}
+      />
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// PDF Protection fields — extracted to keep the main form readable
+// ---------------------------------------------------------------------------
+
+function PdfProtectionFields({
+  form, update,
+}: {
+  form: LabSettings
+  update: <K extends keyof LabSettings>(key: K, value: LabSettings[K]) => void
+}) {
+  const [showSecret, setShowSecret] = useState(false)
+  const needsSecret = form.result_pdf_password_mode === 'DOB_PHONE_SECRET'
+  const secretMissing = needsSecret && !form.lab_secret_code
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          label="Password mode" htmlFor="pdf-pw-mode"
+          hint="Determines how the password is derived from patient data."
+        >
+          <Select
+            value={form.result_pdf_password_mode}
+            onValueChange={(v) => { if (v) update('result_pdf_password_mode', v as never) }}
+            items={PDF_PASSWORD_MODE_OPTIONS}
+          >
+            <SelectTrigger id="pdf-pw-mode"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PDF_PASSWORD_MODE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+        <FormField
+          label="Password hint (optional)" htmlFor="pdf-pw-hint"
+          hint="Displayed to users who need to open the PDF."
+        >
+          <Input
+            id="pdf-pw-hint"
+            value={form.result_pdf_password_hint}
+            onChange={(e) => update('result_pdf_password_hint', e.target.value as never)}
+            placeholder="e.g. Your date of birth + last 4 digits of phone"
+          />
+        </FormField>
+      </div>
+
+      {needsSecret && (
+        <FormField
+          label="Lab PDF secret code (2 characters)" htmlFor="pdf-secret"
+          hint="This code is appended to PDF passwords. Changing it only affects newly generated PDFs."
+          required
+          error={
+            secretMissing ? 'Secret code is required for this password mode.'
+            : (form.lab_secret_code.length > 0 && form.lab_secret_code.length !== 2)
+              ? 'Must be exactly 2 characters.' : undefined
+          }
+        >
+          <div className="relative w-24">
+            <Input
+              id="pdf-secret"
+              type={showSecret ? 'text' : 'password'}
+              className="pr-10 font-mono tracking-widest uppercase text-center"
+              maxLength={2}
+              value={form.lab_secret_code}
+              onChange={(e) => update('lab_secret_code', e.target.value.toUpperCase().slice(0, 2) as never)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowSecret(!showSecret)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </FormField>
+      )}
+    </div>
+  )
+}
+
 
 const ALLOWED_LOGO_MIMES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml'])
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
