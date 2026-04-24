@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
-  ClipboardCheck,
+  ClipboardCheck, Copy, Check,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { useRole, usePermission } from '@/lib/permissions/hooks'
 import {
   useRequest, useConfirmRequest, useCancelRequest,
   useMarkItemCollected, useFinalizeValidation, useRequestLabels,
+  useAccessTokenState, useCreateAccessToken,
 } from '../api'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
@@ -71,6 +72,9 @@ export function RequestDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [showFinalize, setShowFinalize] = useState(false)
+  const { data: tokenState } = useAccessTokenState(id!)
+  const createTokenMut = useCreateAccessToken(id!)
+  const [linkCopied, setLinkCopied] = useState(false)
   const role = useRole()
   const canCollect = !!role && COLLECTION_ROLES.has(role)
   const canFinalize = usePermission(P.REQUESTS_FINALIZE)
@@ -148,6 +152,25 @@ export function RequestDetailPage() {
           <Button className="gap-2" onClick={() => setShowFinalize(true)}>
             <ClipboardCheck className="h-4 w-4" /> Finalize Validation
           </Button>
+        )}
+        {request.has_report && tokenState && (
+          <SecureLinkActions
+            tokenState={tokenState}
+            onGenerate={async () => {
+              try {
+                await createTokenMut.mutateAsync()
+                toast.success('Secure link generated.')
+              } catch { toast.error('Failed to generate link.') }
+            }}
+            generating={createTokenMut.isPending}
+            linkCopied={linkCopied}
+            onCopy={(url) => {
+              navigator.clipboard.writeText(url)
+              setLinkCopied(true)
+              toast.success('Link copied to clipboard.')
+              setTimeout(() => setLinkCopied(false), 2000)
+            }}
+          />
         )}
       </PageHeader>
 
@@ -562,4 +585,49 @@ function CompactResultCell({
 
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className={`mt-0.5 text-sm ${mono ? 'font-mono' : ''}`}>{value}</p></div>
+}
+
+
+import type { AccessTokenState } from '../api'
+
+function SecureLinkActions({
+  tokenState, onGenerate, generating, linkCopied, onCopy,
+}: {
+  tokenState: AccessTokenState
+  onGenerate: () => void
+  generating: boolean
+  linkCopied: boolean
+  onCopy: (url: string) => void
+}) {
+  if (tokenState.status === 'active' && tokenState.access_url) {
+    return (
+      <>
+        <Button
+          variant="outline" className="gap-2"
+          onClick={() => onCopy(tokenState.access_url!)}
+        >
+          {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {linkCopied ? 'Copied' : 'Copy Link'}
+        </Button>
+        {tokenState.expires_at && (
+          <span className="text-xs text-muted-foreground">
+            Expires {new Date(tokenState.expires_at).toLocaleString()}
+          </span>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <Button
+      variant="outline" className="gap-2"
+      onClick={onGenerate}
+      disabled={generating}
+    >
+      {generating
+        ? <Loader2 className="h-4 w-4 animate-spin" />
+        : <Send className="h-4 w-4" />}
+      Generate Secure Link
+    </Button>
+  )
 }

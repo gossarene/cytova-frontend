@@ -369,3 +369,58 @@ export function useRegenerateRequestReport(requestId: string) {
     },
   })
 }
+
+// ============================================================
+// Patient access token
+// ============================================================
+
+export interface AccessTokenState {
+  status: 'not_generated' | 'active' | 'expired' | 'revoked'
+  token?: string
+  expires_at?: string
+  access_url?: string
+  download_url?: string
+}
+
+export function useAccessTokenState(requestId: string) {
+  return useQuery({
+    queryKey: ['requests', requestId, 'access-token'],
+    queryFn: async (): Promise<AccessTokenState> => {
+      const { data } = await api.get<ApiResponse<AccessTokenState>>(
+        `/requests/${requestId}/access-token/`,
+      )
+      return data.data
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateAccessToken(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<AccessTokenState> => {
+      const { data } = await api.post<ApiResponse<AccessTokenState>>(
+        `/requests/${requestId}/access-token/`,
+      )
+      return data.data
+    },
+    onSuccess: () => qc.invalidateQueries({
+      queryKey: ['requests', requestId, 'access-token'],
+    }),
+  })
+}
+
+export function useRegenerateAccessToken(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<AccessTokenState> => {
+      const { data } = await api.post<ApiResponse<AccessTokenState>>(
+        `/requests/${requestId}/access-token/regenerate/`,
+      )
+      return data.data
+    },
+    onSuccess: () => qc.invalidateQueries({
+      queryKey: ['requests', requestId, 'access-token'],
+    }),
+  })
+}
