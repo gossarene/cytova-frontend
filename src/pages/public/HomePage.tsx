@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
 import {
-  Microscope, Users, ClipboardList, FileCheck, Package, ShieldCheck,
-  BarChart3, Zap, Globe, Lock, Server, ArrowRight, CheckCircle2,
-  FlaskConical, Truck, Bell, UserCog, Building2, Receipt,
+  Users, FileCheck, Package, ShieldCheck,
+  BarChart3, Lock, Server, ArrowRight,
+  Bell, UserCog, Receipt,
   ChevronRight, Mail, Phone, MapPin,
+  Workflow, Smartphone, Sparkles, MessageCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { ROUTES } from '@/config/routes'
 
 /* ================================================================
@@ -16,50 +15,52 @@ import { ROUTES } from '@/config/routes'
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background">
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,_theme(colors.primary/0.03)_1px,_transparent_1px),linear-gradient(to_bottom,_theme(colors.primary/0.03)_1px,_transparent_1px)] bg-[size:4rem_4rem]" />
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50/60 via-white to-white">
+      {/* Layered ambient lighting for depth — two soft glows from opposite corners */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(37,99,235,0.10),transparent_70%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -left-24 h-[28rem] w-[28rem] rounded-full bg-primary/10 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-32 -right-24 h-[32rem] w-[32rem] rounded-full bg-blue-400/10 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+      />
 
-      <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-24 sm:pt-32">
-        <div className="mx-auto max-w-3xl text-center">
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-white px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
-            <FlaskConical className="h-3.5 w-3.5 text-primary" />
-            Laboratory Information Management System
-          </div>
-
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            Precision lab management,{' '}
-            <span className="text-primary">delivered with clarity</span>
+      <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-28 sm:pt-36">
+        <div className="mx-auto max-w-3xl text-center animate-fade-in">
+          <h1 className="text-balance text-5xl font-semibold tracking-tighter text-foreground sm:text-6xl lg:text-7xl">
+            Run your laboratory{' '}
+            <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+              with confidence
+            </span>
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Cytova is the cloud-based LIMS built for medical laboratories. From patient
-            registration to result publication, manage your entire workflow with
-            confidence, traceability, and compliance.
+          <p className="mx-auto mt-7 max-w-2xl text-balance text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            From patient registration to secure result delivery, Cytova helps laboratories
+            streamline operations, reduce errors, and deliver better care.
           </p>
 
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <div className="mt-12 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link to={ROUTES.SIGNUP}>
-              <Button size="lg" className="gap-2 text-base px-6">
+              <Button size="lg" className="gap-2 px-7 text-base shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">
                 Request a Demo
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <a href="#product">
-              <Button variant="outline" size="lg" className="gap-2 text-base px-6">
+              <Button variant="outline" size="lg" className="gap-2 px-7 text-base">
                 Discover the Platform
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </a>
-          </div>
-
-          {/* Trust indicators */}
-          <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-primary/70" /> ISO 15189 Ready</span>
-            <span className="flex items-center gap-1.5"><Lock className="h-4 w-4 text-primary/70" /> GDPR Compliant</span>
-            <span className="flex items-center gap-1.5"><Server className="h-4 w-4 text-primary/70" /> 99.9% Uptime SLA</span>
-            <span className="flex items-center gap-1.5"><Globe className="h-4 w-4 text-primary/70" /> Multi-Tenant Cloud</span>
           </div>
         </div>
       </div>
@@ -68,55 +69,56 @@ function HeroSection() {
 }
 
 /* ================================================================
-   PRODUCT OVERVIEW
+   PRODUCT — "Everything your lab needs"
    ================================================================ */
 
 const PRODUCT_PILLARS = [
   {
-    icon: Zap,
+    icon: Workflow,
     title: 'Streamlined Workflows',
-    description: 'From sample reception to result publication, every step is guided by clear status transitions and role-based actions.',
+    description: 'From sample reception to result delivery, every step flows naturally — guided, traceable, effortless.',
   },
   {
     icon: ShieldCheck,
-    title: 'Built-In Compliance',
-    description: 'Immutable audit trails, traceability records, and role-based access control ensure regulatory readiness from day one.',
+    title: 'Built-In Trust',
+    description: 'Immutable audit trails, role-based access, and traceability that meet regulatory standards by default.',
   },
   {
     icon: BarChart3,
-    title: 'Real-Time Visibility',
-    description: 'Dashboards, alerts, and analytics give lab managers instant insight into operations, inventory, and performance.',
+    title: 'Real-Time Clarity',
+    description: 'Live dashboards and smart alerts give your team instant insight into operations and performance.',
   },
 ]
 
 function ProductSection() {
   return (
-    <section id="product" className="bg-white py-24">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="product" className="bg-white py-28">
+      <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">The Platform</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything your laboratory needs, in one place
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">The Platform</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
+            Everything your lab needs
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Cytova replaces fragmented tools with a single, integrated platform designed
-            exclusively for medical laboratories.
+          <p className="mt-5 text-balance text-lg leading-relaxed text-muted-foreground">
+            One integrated platform that brings every part of your laboratory together —
+            from front desk to final report.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-8 sm:grid-cols-3">
-          {PRODUCT_PILLARS.map((pillar) => (
-            <Card key={pillar.title} className="border-0 bg-slate-50 shadow-none">
-              <CardContent className="p-8">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                  <pillar.icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold">{pillar.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {pillar.description}
-                </p>
-              </CardContent>
-            </Card>
+        <div className="mt-20 grid gap-6 sm:grid-cols-3">
+          {PRODUCT_PILLARS.map((pillar, i) => (
+            <div
+              key={pillar.title}
+              className={`group relative rounded-2xl border border-slate-200/70 bg-white p-8 shadow-sm shadow-slate-900/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 animate-fade-in animation-delay-${(i + 1) * 100}`}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/10 transition-all duration-300 group-hover:from-primary/20 group-hover:ring-primary/20">
+                <pillar.icon className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="mt-6 text-lg font-semibold tracking-tight">{pillar.title}</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                {pillar.description}
+              </p>
+            </div>
           ))}
         </div>
       </div>
@@ -125,99 +127,102 @@ function ProductSection() {
 }
 
 /* ================================================================
-   CORE MODULES / FEATURES
+   MODULES — grouped (Lab / Business / Intelligence), max 6 cards
    ================================================================ */
 
-const FEATURES = [
+const MODULE_GROUPS = [
   {
-    icon: Users,
-    title: 'Patient Management',
-    description: 'Register patients, manage demographics, and provide portal access for result consultation.',
+    label: 'Lab Operations',
+    items: [
+      {
+        icon: Users,
+        title: 'Patient Management',
+        description: 'Register patients, manage records, and give them secure access to their own results.',
+      },
+      {
+        icon: FileCheck,
+        title: 'Results & Validation',
+        description: 'Enter results, validate with biologist sign-off, and publish with full traceability.',
+      },
+    ],
   },
   {
-    icon: ClipboardList,
-    title: 'Analysis Requests',
-    description: 'Create, track, and manage requests with full pricing resolution, partner billing, and status workflows.',
+    label: 'Business & Logistics',
+    items: [
+      {
+        icon: Package,
+        title: 'Inventory & Procurement',
+        description: 'Track stock, lots, and expiration dates. Manage suppliers and orders in one place.',
+      },
+      {
+        icon: Receipt,
+        title: 'Partners & Billing',
+        description: 'Manage referring partners with flexible pricing and clear, contextual invoicing.',
+      },
+    ],
   },
   {
-    icon: FileCheck,
-    title: 'Results & Validation',
-    description: 'Enter results, validate with biologist sign-off, and publish with irreversible audit trails.',
-  },
-  {
-    icon: Microscope,
-    title: 'Exam Catalog',
-    description: 'Define exam categories, sample types, pricing rules, and per-lab customizations.',
-  },
-  {
-    icon: Package,
-    title: 'Inventory Management',
-    description: 'Track reagent stock, lots, expiration dates, and movements with real-time alerts.',
-  },
-  {
-    icon: Truck,
-    title: 'Procurement',
-    description: 'Manage suppliers, create purchase orders, and record receptions with automatic stock updates.',
-  },
-  {
-    icon: Building2,
-    title: 'Partner Network',
-    description: 'Manage referring clinics and hospitals with dedicated billing modes and referral tracking.',
-  },
-  {
-    icon: Bell,
-    title: 'Smart Alerts',
-    description: 'Automated low-stock, expiration, and out-of-stock alerts with acknowledgment workflows.',
-  },
-  {
-    icon: UserCog,
-    title: 'Role-Based Access',
-    description: 'Seven granular roles with 40+ permissions. Delegate safely with per-user overrides.',
-  },
-  {
-    icon: Receipt,
-    title: 'Billing & Pricing',
-    description: 'Flexible pricing rules by exam, partner, and source type. Full price traceability on every item.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Analytics Dashboard',
-    description: 'Real-time KPIs across patients, requests, results, inventory, and partner performance.',
-  },
-  {
-    icon: Lock,
-    title: 'Audit Trail',
-    description: 'Immutable, append-only logs for every action. Full traceability for compliance audits.',
+    label: 'Intelligence & Compliance',
+    items: [
+      {
+        icon: BarChart3,
+        title: 'Analytics Dashboard',
+        description: 'See live KPIs across patients, requests, results, and inventory at a glance.',
+      },
+      {
+        icon: Bell,
+        title: 'Alerts & Audit',
+        description: 'Smart notifications for what matters, with an immutable audit trail behind every action.',
+      },
+    ],
   },
 ]
 
-function FeaturesSection() {
+function ModulesSection() {
   return (
-    <section id="features" className="bg-slate-50 py-24">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="features" className="bg-slate-50 py-28">
+      <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Core Modules</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Designed for every role in your lab
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Modules</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
+            Built for every part of your lab
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Each module is purpose-built for laboratory operations, from front desk to quality control.
+          <p className="mt-5 text-balance text-lg leading-relaxed text-muted-foreground">
+            Six focused modules, three clear domains. Everything connects — nothing gets in the way.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {FEATURES.map((feature) => (
-            <Card key={feature.title} className="bg-white shadow-sm transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <feature.icon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="mt-4 font-semibold">{feature.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  {feature.description}
+        <div className="mt-20 grid gap-10 lg:grid-cols-3">
+          {MODULE_GROUPS.map((group, gi) => (
+            <div key={group.label} className={`animate-fade-in animation-delay-${(gi + 1) * 100}`}>
+              <div className="mb-6 flex items-center gap-3">
+                <span className="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                  {group.label}
                 </p>
-              </CardContent>
-            </Card>
+                <span className="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent" />
+              </div>
+              <div className="space-y-4">
+                {group.items.map((item) => (
+                  <div
+                    key={item.title}
+                    className="group rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-900/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/10 transition-all duration-300 group-hover:from-primary/20 group-hover:ring-primary/20">
+                        <item.icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold tracking-tight">{item.title}</h3>
+                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -232,50 +237,116 @@ function FeaturesSection() {
 const STEPS = [
   {
     number: '01',
-    title: 'Onboard Your Laboratory',
-    description: 'Sign up, configure your exam catalog, invite your staff, and customize settings. Your isolated environment is provisioned in seconds.',
+    title: 'Onboard your laboratory',
+    description: 'Sign up, configure your catalog, and invite your team. Your environment is ready in minutes.',
   },
   {
     number: '02',
-    title: 'Register & Receive',
-    description: 'Front desk registers patients, creates analysis requests, and receives samples. Prices are resolved automatically from your pricing rules.',
+    title: 'Register & receive',
+    description: 'Front desk registers patients and creates requests. Pricing resolves automatically.',
   },
   {
     number: '03',
-    title: 'Process & Validate',
-    description: 'Technicians enter results, biologists validate, and the system enforces every step of the quality workflow before publication.',
+    title: 'Process & validate',
+    description: 'Technicians enter results, biologists validate. Quality checks at every step.',
   },
   {
     number: '04',
-    title: 'Publish & Grow',
-    description: 'Results are published to patients via a secure portal. Dashboard analytics help you optimize operations and grow your laboratory.',
+    title: 'Publish & grow',
+    description: 'Deliver results securely to patients. Analytics help you optimize and scale.',
   },
 ]
 
 function HowItWorksSection() {
   return (
-    <section className="bg-white py-24">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="bg-white py-28">
+      <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">How It Works</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">How It Works</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
             Up and running in four steps
           </h2>
         </div>
 
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-20 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => (
             <div key={step.number} className="relative">
-              {/* Connector line (desktop) */}
               {i < STEPS.length - 1 && (
-                <div className="absolute right-0 top-8 hidden h-px w-8 bg-border lg:block" style={{ transform: 'translateX(100%)' }} />
+                <div className="absolute right-0 top-8 hidden h-px w-10 bg-gradient-to-r from-primary/30 to-transparent lg:block" style={{ transform: 'translateX(100%)' }} />
               )}
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-2xl font-bold text-primary">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-2xl font-semibold tracking-tighter text-primary">
                 {step.number}
               </div>
-              <h3 className="mt-5 text-lg font-semibold">{step.title}</h3>
+              <h3 className="mt-6 text-lg font-semibold tracking-tight">{step.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ================================================================
+   VISION — forward-looking pillars
+   ================================================================ */
+
+const VISION_PILLARS = [
+  {
+    icon: Workflow,
+    title: 'Lab Automation',
+    description: 'A laboratory that runs itself, so your team can focus on science — not on shuffling paperwork.',
+  },
+  {
+    icon: Smartphone,
+    title: 'Results, Anywhere',
+    description: 'Patients access their results securely from any device, the moment they are ready.',
+  },
+  {
+    icon: Sparkles,
+    title: 'AI for Biologists',
+    description: 'Intelligent assistance that highlights anomalies, suggests interpretations, and saves time.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'AI Assistant for Patients',
+    description: 'A friendly companion that answers questions and guides patients through their journey.',
+  },
+]
+
+function VisionSection() {
+  return (
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 py-28">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,rgba(37,99,235,0.06),transparent_70%)]"
+      />
+      <div className="relative mx-auto max-w-6xl px-6">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Our Vision</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
+            The future of laboratory work
+          </h2>
+          <p className="mt-5 text-balance text-lg leading-relaxed text-muted-foreground">
+            We're building a laboratory experience where technology stays in the background —
+            and people stay at the center.
+          </p>
+        </div>
+
+        <div className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {VISION_PILLARS.map((pillar, i) => (
+            <div
+              key={pillar.title}
+              className={`group relative rounded-2xl border border-slate-200/70 bg-white/70 p-7 shadow-sm shadow-slate-900/[0.03] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-white hover:shadow-2xl hover:shadow-primary/10 animate-fade-in animation-delay-${(i + 1) * 100}`}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/10 transition-all duration-300 group-hover:from-primary/20 group-hover:ring-primary/20">
+                <pillar.icon className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="mt-6 font-semibold tracking-tight">{pillar.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {pillar.description}
               </p>
             </div>
           ))}
@@ -292,49 +363,48 @@ function HowItWorksSection() {
 const SECURITY_POINTS = [
   {
     icon: Lock,
-    title: 'Tenant Isolation',
-    description: 'Each laboratory operates in its own PostgreSQL schema. Data never crosses tenant boundaries.',
+    title: 'Confidentiality first',
+    description: 'Patient data is handled with the highest level of care and privacy at every step.',
   },
   {
     icon: ShieldCheck,
-    title: 'Immutable Audit Trail',
-    description: 'Every action is logged with actor, timestamp, IP, and diff. Records cannot be modified or deleted.',
+    title: 'Activity History',
+    description: 'See exactly who did what and when. A clear, permanent record you can always trust.',
   },
   {
     icon: UserCog,
-    title: 'Granular Permissions',
-    description: '40+ fine-grained permission codes with role-based defaults and per-user overrides.',
+    title: 'Access Control',
+    description: 'Give each team member just the right level of access. Simple to set up, easy to adjust.',
   },
   {
     icon: Server,
-    title: 'Encrypted at Rest & Transit',
-    description: 'TLS 1.3 in transit, AES-256 at rest. JWT tokens with short lifetimes and rotation.',
+    title: 'Encrypted by Default',
+    description: 'Your data is protected at every step, whether it is moving or at rest. No setup required.',
   },
 ]
 
 function SecuritySection() {
   return (
-    <section id="security" className="bg-slate-950 py-24 text-white">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="security" className="bg-slate-950 py-28 text-white">
+      <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-teal-400">Security & Compliance</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-400">Security & Trust</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
             Trust built into every layer
           </h2>
-          <p className="mt-4 text-lg text-slate-400">
-            Healthcare data demands the highest standards. Cytova is designed for
-            compliance from the ground up.
+          <p className="mt-5 text-balance text-lg leading-relaxed text-slate-400">
+            Your patients trust you. We make it easy to keep that trust — with protection that just works.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-8 sm:grid-cols-2">
+        <div className="mt-20 grid gap-6 sm:grid-cols-2">
           {SECURITY_POINTS.map((point) => (
-            <div key={point.title} className="flex gap-5 rounded-xl bg-white/5 p-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-400/10">
-                <point.icon className="h-6 w-6 text-teal-400" />
+            <div key={point.title} className="group flex gap-5 rounded-2xl border border-white/5 bg-white/[0.04] p-6 transition-all duration-300 hover:border-blue-400/20 hover:bg-white/[0.06]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-400/10">
+                <point.icon className="h-6 w-6 text-blue-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">{point.title}</h3>
+                <h3 className="font-semibold tracking-tight text-white">{point.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
                   {point.description}
                 </p>
@@ -348,81 +418,29 @@ function SecuritySection() {
 }
 
 /* ================================================================
-   VISION / WHY CYTOVA
-   ================================================================ */
-
-const DIFFERENTIATORS = [
-  'Purpose-built for medical laboratories — not generic project management',
-  'Multi-tenant architecture with true data isolation per laboratory',
-  'Complete exam lifecycle: request, trace, result, validate, publish',
-  'Role-aware interface that adapts to each staff member\'s responsibilities',
-  'Real-time inventory management with automated alerts',
-  'Partner billing and contextual pricing built in, not bolted on',
-  'Immutable audit trails meeting ISO 15189 traceability requirements',
-  'Open API with OpenAPI schema for custom integrations',
-]
-
-function VisionSection() {
-  return (
-    <section className="bg-white py-24">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">Why Cytova</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Built by lab professionals, for lab professionals
-            </h2>
-            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              Most laboratory software was designed decades ago and adapted for the cloud.
-              Cytova was born in the cloud, with modern standards for security, usability,
-              and scalability from the very first line of code.
-            </p>
-            <Separator className="my-8" />
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">Our Mission</p>
-            <p className="mt-2 text-muted-foreground leading-relaxed">
-              To give every medical laboratory access to world-class digital tools —
-              regardless of size or location — so they can focus on what matters: delivering
-              accurate, timely results that improve patient outcomes.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {DIFFERENTIATORS.map((point, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-lg bg-slate-50 px-5 py-3.5"
-              >
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <span className="text-sm leading-relaxed">{point}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ================================================================
    CTA
    ================================================================ */
 
 function CTASection() {
   return (
-    <section className="bg-gradient-to-br from-primary to-teal-700 py-24">
-      <div className="mx-auto max-w-3xl px-6 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          Ready to modernize your laboratory?
+    <section className="relative overflow-hidden bg-gradient-to-br from-primary via-blue-700 to-blue-900 py-24">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(255,255,255,0.15),transparent_70%)]"
+      />
+      <div className="relative mx-auto max-w-3xl px-6 text-center">
+        <h2 className="text-balance text-4xl font-semibold tracking-tighter text-white sm:text-5xl">
+          Take your laboratory further
         </h2>
-        <p className="mt-4 text-lg text-teal-100">
-          Join laboratories that trust Cytova for their daily operations.
-          Get started with a free trial — no credit card required.
+        <p className="mt-5 text-balance text-lg text-blue-100">
+          Discover how Cytova helps laboratories work faster, deliver better care,
+          and grow with confidence.
         </p>
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+        <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link to={ROUTES.SIGNUP}>
             <Button
               size="lg"
-              className="gap-2 bg-white text-primary hover:bg-white/90 text-base px-8"
+              className="gap-2 bg-white px-8 text-base font-semibold text-blue-700 shadow-xl shadow-blue-950/40 ring-1 ring-white/40 hover:bg-white hover:text-blue-800 hover:-translate-y-0.5 transition-all"
             >
               Start Free Trial
               <ArrowRight className="h-4 w-4" />
@@ -432,9 +450,9 @@ function CTASection() {
             <Button
               variant="outline"
               size="lg"
-              className="gap-2 border-white/30 text-white hover:bg-white/10 text-base px-8"
+              className="gap-2 border-white/40 bg-white/5 px-8 text-base text-white hover:bg-white/15 hover:border-white/60"
             >
-              Contact Sales
+              Talk to Sales
             </Button>
           </Link>
         </div>
@@ -449,30 +467,44 @@ function CTASection() {
 
 function ContactSection() {
   return (
-    <section id="contact" className="bg-slate-50 py-24">
-      <div className="mx-auto max-w-7xl px-6">
+    <section id="contact" className="bg-slate-50 py-28">
+      <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Get in Touch</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            We'd love to hear from you
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Get in Touch</p>
+          <h2 className="mt-3 text-balance text-4xl font-semibold tracking-tighter sm:text-5xl">
+            Talk to our team
           </h2>
-          <p className="mt-4 text-muted-foreground">
-            Have questions about Cytova? Our team is here to help.
+          <p className="mt-5 text-balance text-lg text-muted-foreground">
+            See how Cytova can fit your laboratory. We'll walk you through it personally.
           </p>
+          <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link to={ROUTES.SIGNUP}>
+              <Button size="lg" className="gap-2 px-7 text-base shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">
+                Request a Demo
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to={ROUTES.CONTACT}>
+              <Button variant="outline" size="lg" className="gap-2 px-7 text-base">
+                Schedule a Call
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="mx-auto mt-12 grid max-w-xl gap-6 sm:grid-cols-3">
+        <div className="mx-auto mt-20 grid max-w-3xl gap-5 sm:grid-cols-3">
           {[
             { icon: Mail, label: 'Email', value: 'contact@cytova.io' },
             { icon: Phone, label: 'Phone', value: '+33 1 00 00 00 00' },
             { icon: MapPin, label: 'Office', value: 'Paris, France' },
           ].map((item) => (
-            <div key={item.label} className="flex flex-col items-center rounded-xl bg-white p-6 text-center shadow-sm">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div key={item.label} className="group flex flex-col items-center rounded-2xl border border-slate-200/70 bg-white p-7 text-center shadow-sm shadow-slate-900/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/10 transition-all duration-300 group-hover:ring-primary/20">
                 <item.icon className="h-5 w-5 text-primary" />
               </div>
-              <p className="mt-3 text-sm font-semibold">{item.label}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{item.value}</p>
+              <p className="mt-5 text-sm font-semibold tracking-tight">{item.label}</p>
+              <p className="mt-1.5 text-sm text-muted-foreground">{item.value}</p>
             </div>
           ))}
         </div>
@@ -490,10 +522,10 @@ export function HomePage() {
     <>
       <HeroSection />
       <ProductSection />
-      <FeaturesSection />
+      <ModulesSection />
       <HowItWorksSection />
-      <SecuritySection />
       <VisionSection />
+      <SecuritySection />
       <CTASection />
       <ContactSection />
     </>

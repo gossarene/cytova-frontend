@@ -424,3 +424,53 @@ export function useRegenerateAccessToken(requestId: string) {
     }),
   })
 }
+
+export interface ChannelOutcome {
+  channel: 'EMAIL'
+  status: 'FAILED'
+  provider: string | null
+  error: string | null
+}
+
+export interface NotifyPatientResponse {
+  secure_link: string
+  expires_at: string
+  channels_attempted: string[]
+  channels_succeeded: string[]
+  channels_failed: ChannelOutcome[]
+}
+
+export function useNotifyPatientByEmail(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<NotifyPatientResponse> => {
+      const { data } = await api.post<ApiResponse<NotifyPatientResponse>>(
+        `/requests/${requestId}/notify-patient/`,
+      )
+      return data.data
+    },
+    onSuccess: (res) => {
+      // Backend creates-or-reuses the secure link; promote the returned
+      // values into the access-token cache so the UI reflects the new
+      // active link immediately (no flicker, no extra round-trip).
+      qc.setQueryData<AccessTokenState>(
+        ['requests', requestId, 'access-token'],
+        (prev) => ({
+          status: 'active',
+          // Preserve any existing token/download_url (the notify endpoint
+          // doesn't surface them — they remain valid since we reused the
+          // same row), but always overwrite access_url + expires_at.
+          token: prev?.token,
+          download_url: prev?.download_url,
+          access_url: res.secure_link,
+          expires_at: res.expires_at,
+        }),
+      )
+      // Still invalidate so the next focus refetch reconciles with the
+      // canonical /access-token/ payload (token + download_url fields).
+      qc.invalidateQueries({
+        queryKey: ['requests', requestId, 'access-token'],
+      })
+    },
+  })
+}

@@ -56,20 +56,20 @@
 }
 
 /*
- * Cytova Design System — Healthcare/Corporate Teal Palette
- * Primary: Teal — clinical, calming, trustworthy
- * Destructive: Red — errors, abnormal results
- * Success: Emerald — published, completed
- * Warning: Amber — pending, attention
+ * Cytova Design System — Blue Brand Palette
+ * Primary: Blue (#2563EB) — professional, trustworthy, medical
+ * Success: Emerald (#10B981) — validated, completed (NOT brand color)
+ * Destructive: Red (#EF4444) — errors, abnormal results
+ * Warning: Amber (#F59E0B) — pending, attention
  */
 
 :root {
-    /* Primary: Teal */
-    --primary: oklch(0.55 0.15 175);
+    /* Primary: Cytova Blue */
+    --primary: oklch(0.55 0.22 264);
     --primary-foreground: oklch(0.985 0 0);
 
     /* Background & surfaces */
-    --background: oklch(0.985 0 0);
+    --background: oklch(0.985 0.003 264);
     --foreground: oklch(0.145 0.014 285);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0.014 285);
@@ -84,15 +84,15 @@
     --muted: oklch(0.968 0.003 264);
     --muted-foreground: oklch(0.545 0.02 264);
 
-    /* Accent: Light teal tint */
-    --accent: oklch(0.955 0.03 175);
+    /* Accent: Light blue tint */
+    --accent: oklch(0.955 0.03 264);
     --accent-foreground: oklch(0.295 0.025 264);
 
     /* Destructive: Red */
     --destructive: oklch(0.577 0.245 27.325);
 
-    /* Success: Emerald */
-    --success: oklch(0.55 0.17 155);
+    /* Success: Emerald (status only, not brand) */
+    --success: oklch(0.65 0.17 165);
     --success-foreground: oklch(0.985 0 0);
 
     /* Warning: Amber */
@@ -102,30 +102,30 @@
     /* Borders & inputs */
     --border: oklch(0.905 0.005 264);
     --input: oklch(0.905 0.005 264);
-    --ring: oklch(0.55 0.15 175);
+    --ring: oklch(0.55 0.22 264);
 
     /* Charts */
-    --chart-1: oklch(0.55 0.15 175);
-    --chart-2: oklch(0.55 0.17 155);
+    --chart-1: oklch(0.55 0.22 264);
+    --chart-2: oklch(0.65 0.17 165);
     --chart-3: oklch(0.75 0.18 75);
     --chart-4: oklch(0.577 0.245 27.325);
     --chart-5: oklch(0.545 0.02 264);
 
     --radius: 0.5rem;
 
-    /* Sidebar: Dark slate */
-    --sidebar: oklch(0.145 0.03 264);
-    --sidebar-foreground: oklch(0.92 0 0);
-    --sidebar-primary: oklch(0.55 0.15 175);
+    /* Sidebar: Deep navy (#020617 → #0F172A) */
+    --sidebar: oklch(0.08 0.025 265);
+    --sidebar-foreground: oklch(0.88 0 0);
+    --sidebar-primary: oklch(0.55 0.22 264);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.22 0.03 264);
-    --sidebar-accent-foreground: oklch(0.92 0 0);
-    --sidebar-border: oklch(0.26 0.03 264);
-    --sidebar-ring: oklch(0.55 0.15 175);
+    --sidebar-accent: oklch(0.16 0.03 265);
+    --sidebar-accent-foreground: oklch(0.95 0 0);
+    --sidebar-border: oklch(0.18 0.02 265);
+    --sidebar-ring: oklch(0.55 0.22 264);
 }
 
 .dark {
-    --primary: oklch(0.65 0.15 175);
+    --primary: oklch(0.65 0.22 264);
     --primary-foreground: oklch(0.145 0 0);
 
     --background: oklch(0.145 0.014 285);
@@ -142,29 +142,29 @@
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
 
-    --success: oklch(0.65 0.17 155);
+    --success: oklch(0.65 0.17 165);
     --success-foreground: oklch(0.145 0 0);
     --warning: oklch(0.75 0.18 75);
     --warning-foreground: oklch(0.25 0.05 75);
 
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.65 0.15 175);
+    --ring: oklch(0.65 0.22 264);
 
-    --chart-1: oklch(0.65 0.15 175);
-    --chart-2: oklch(0.65 0.17 155);
+    --chart-1: oklch(0.65 0.22 264);
+    --chart-2: oklch(0.65 0.17 165);
     --chart-3: oklch(0.75 0.18 75);
     --chart-4: oklch(0.704 0.191 22.216);
     --chart-5: oklch(0.708 0 0);
 
-    --sidebar: oklch(0.145 0.03 264);
-    --sidebar-foreground: oklch(0.92 0 0);
-    --sidebar-primary: oklch(0.65 0.15 175);
+    --sidebar: oklch(0.08 0.025 265);
+    --sidebar-foreground: oklch(0.88 0 0);
+    --sidebar-primary: oklch(0.65 0.22 264);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.22 0.03 264);
-    --sidebar-accent-foreground: oklch(0.92 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.65 0.15 175);
+    --sidebar-accent: oklch(0.16 0.03 265);
+    --sidebar-accent-foreground: oklch(0.95 0 0);
+    --sidebar-border: oklch(0.18 0.02 265);
+    --sidebar-ring: oklch(0.65 0.22 264);
 }
 
 @layer base {
@@ -177,5 +177,43 @@
     }
     html {
         @apply font-sans antialiased;
+        scroll-behavior: smooth;
+    }
+}
+
+/* Cytova — Subtle animation utilities */
+@keyframes cytova-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cytova-fade-in-scale {
+    from { opacity: 0; transform: scale(0.97) translateY(6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes cytova-pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@layer utilities {
+    .animate-fade-in {
+        animation: cytova-fade-in 0.4s ease-out both;
+    }
+    .animate-fade-in-scale {
+        animation: cytova-fade-in-scale 0.5s ease-out both;
+    }
+    .animate-pulse-soft {
+        animation: cytova-pulse-soft 2s ease-in-out infinite;
+    }
+    .animation-delay-100 { animation-delay: 0.1s; }
+    .animation-delay-200 { animation-delay: 0.2s; }
+    .animation-delay-300 { animation-delay: 0.3s; }
+    .animation-delay-400 { animation-delay: 0.4s; }
+    .scrollbar-hidden {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .scrollbar-hidden::-webkit-scrollbar {
+        display: none;
     }
 }

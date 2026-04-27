@@ -69,6 +69,12 @@ export interface LabSettings {
   result_pdf_password_mode: string
   result_pdf_password_hint: string
 
+  // Notification channels
+  notification_enable_secure_link: boolean
+  notification_enable_whatsapp_share: boolean
+  notification_enable_email: boolean
+  notification_enable_sms: boolean
+
   // Billing
   financial_document_mode: 'INVOICE_ONLY' | 'STATEMENT_ONLY' | 'BOTH'
   default_invoice_vat_rate: number | null

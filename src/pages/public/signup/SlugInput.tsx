@@ -83,10 +83,10 @@ export function SlugInput({ value, onChange, onAvailabilityChange, error }: Slug
         </div>
       </div>
 
-      {/* Domain preview */}
+      {/* Workspace URL preview */}
       {value && value.length >= 3 && (
         <p className="text-xs text-muted-foreground">
-          Your lab will be accessible at{' '}
+          Your workspace URL will be:{' '}
           <span className="font-medium text-foreground">
             {value}.{env.domain}
           </span>

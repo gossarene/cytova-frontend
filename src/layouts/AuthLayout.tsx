@@ -1,6 +1,8 @@
 import { Outlet, Link } from 'react-router-dom'
-import { Microscope, ShieldCheck, Lock, Server } from 'lucide-react'
+import { ShieldCheck, Lock, Server } from 'lucide-react'
 import { ROUTES } from '@/config/routes'
+import cytovaLogo from '@/assets/images/branding/cytova-logo.png'
+import cytovaIcon from '@/assets/images/branding/cytova-icon.png'
 
 export function AuthLayout() {
   return (
@@ -9,10 +11,7 @@ export function AuthLayout() {
       <div className="hidden lg:flex lg:w-[480px] xl:w-[560px] flex-col justify-between bg-slate-950 p-10 text-white">
         <div>
           <Link to={ROUTES.HOME} className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Microscope className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold tracking-tight">Cytova</span>
+            <img src={cytovaLogo} alt="Cytova" className="h-8" />
           </Link>
         </div>
 
@@ -33,7 +32,7 @@ export function AuthLayout() {
               { icon: Server, text: '99.9% uptime SLA' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-sm text-slate-400">
-                <Icon className="h-4 w-4 text-teal-400 shrink-0" />
+                <Icon className="h-4 w-4 text-blue-400 shrink-0" />
                 <span>{text}</span>
               </div>
             ))}
@@ -50,10 +49,8 @@ export function AuthLayout() {
         {/* Mobile header */}
         <div className="flex items-center justify-between p-6 lg:hidden">
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Microscope className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-semibold">Cytova</span>
+            <img src={cytovaIcon} alt="Cytova" className="h-8 w-8" />
+            <img src={cytovaLogo} alt="Cytova" className="h-6" />
           </Link>
         </div>
 

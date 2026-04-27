@@ -82,13 +82,16 @@ export function ResetPasswordPage() {
     try {
       await api.post('/auth/password-reset/confirm/', {
         token,
-        new_password: data.password,
+        password: data.password,
+        confirm_password: data.confirm_password,
       })
       setSuccess(true)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } }
       if (axiosErr.response?.status === 400) {
         setServerError('This reset link has expired or already been used. Please request a new one.')
+      } else if (axiosErr.response?.status === 429) {
+        setServerError('Too many attempts. Please wait a moment and try again.')
       } else {
         setServerError('An error occurred. Please try again.')
       }

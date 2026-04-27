@@ -115,6 +115,9 @@ export interface RequestDetail {
   request_number: string
   public_reference: string
   patient_id: string
+  /** UX hint for "Notify by email" affordance. Empty string means
+      patient has no email on file — backend still revalidates. */
+  patient_email: string
   status: RequestStatus
   notes: string
   source_type: SourceType

@@ -35,6 +35,13 @@ const PDF_PASSWORD_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: 'DOB_PHONE_SECRET', label: 'DOB + phone suffix + lab secret code' },
 ]
 
+const NOTIFICATION_OPTIONS: { key: keyof LabSettings; label: string; hint?: string; disabled?: boolean }[] = [
+  { key: 'notification_enable_secure_link', label: 'Secure access link', hint: 'Allow generating secure links for patient results.' },
+  { key: 'notification_enable_whatsapp_share', label: 'WhatsApp manual share', hint: 'Show a Share via WhatsApp button for secure links.' },
+  { key: 'notification_enable_email', label: 'Email notification', hint: 'Send patients an email when their result is ready.' },
+  { key: 'notification_enable_sms', label: 'SMS notification', hint: 'Coming soon — automatic SMS to patients.', disabled: true },
+]
+
 const DOC_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: 'INVOICE_ONLY', label: 'Invoice only' },
   { value: 'STATEMENT_ONLY', label: 'Financial statement only' },
@@ -292,6 +299,37 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
           {form.result_pdf_password_enabled && (
             <PdfProtectionFields form={form} update={update} />
           )}
+        </CardContent>
+      </Card>
+
+      {/* Notification Channels */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            Patient Notifications
+          </CardTitle>
+          <CardDescription>
+            Control how patients can access their results. Email and SMS will be available in a future update.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+            {NOTIFICATION_OPTIONS.map(({ key, label, hint, disabled }) => (
+              <div key={key} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor={`notif-${key}`} className="text-sm">{label}</Label>
+                  {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+                </div>
+                <Switch
+                  id={`notif-${key}`}
+                  checked={form[key] as boolean}
+                  onCheckedChange={(v) => update(key, v as never)}
+                  disabled={disabled}
+                />
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

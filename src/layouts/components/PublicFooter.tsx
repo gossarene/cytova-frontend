@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Microscope } from 'lucide-react'
 import { ROUTES } from '@/config/routes'
+import cytovaLogo from '@/assets/images/branding/cytova-logo.png'
 
 const FOOTER_SECTIONS = [
   {
@@ -49,15 +49,12 @@ export function PublicFooter() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-6">
           {/* Brand column */}
           <div className="col-span-2">
-            <Link to={ROUTES.HOME} className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Microscope className="h-4.5 w-4.5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-semibold tracking-tight text-white">Cytova</span>
+            <Link to={ROUTES.HOME} className="flex items-center">
+              <img src={cytovaLogo} alt="Cytova" className="h-8 brightness-0 invert" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-400">
-              Cloud-based laboratory information management system. Built for modern medical
-              laboratories that demand precision, security, and efficiency.
+              Cytova helps laboratories simplify operations, deliver results securely,
+              and improve patient experience.
             </p>
           </div>
 
@@ -84,12 +81,9 @@ export function PublicFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-6 sm:flex-row">
+        <div className="mx-auto flex max-w-7xl items-center justify-center px-6 py-6">
           <p className="text-xs text-slate-500">
             &copy; {new Date().getFullYear()} Cytova Technologies. All rights reserved.
-          </p>
-          <p className="text-xs text-slate-500">
-            ISO 15189 &middot; GDPR Compliant &middot; SOC 2 Type II
           </p>
         </div>
       </div>

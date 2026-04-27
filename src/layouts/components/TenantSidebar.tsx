@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Microscope, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { PanelLeftClose, PanelLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import cytovaLogo from '@/assets/images/branding/cytova-logo.png'
+import cytovaIcon from '@/assets/images/branding/cytova-icon.png'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { SidebarNavItem } from './SidebarNavItem'
 import { useSidebarNav } from '../hooks/useSidebarNav'
 import { ROUTES } from '@/config/routes'
@@ -16,54 +16,64 @@ export function TenantSidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-200',
+        'flex h-full flex-col text-sidebar-foreground transition-all duration-200',
+        'bg-[linear-gradient(180deg,#020617_0%,#0F172A_100%)]',
+        'border-r border-sidebar-border/70',
         collapsed ? 'w-16' : 'w-64',
       )}
     >
-      {/* Logo */}
-      <div className={cn('flex h-14 items-center border-b border-sidebar-border px-4', collapsed && 'justify-center px-2')}>
-        <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2 text-sidebar-foreground">
-          <Microscope className="h-6 w-6 text-sidebar-primary shrink-0" />
-          {!collapsed && <span className="text-lg font-semibold tracking-tight">Cytova</span>}
+      {/* Logo — fixed at top */}
+      <div className={cn(
+        'flex h-14 shrink-0 items-center border-b border-sidebar-border/60 px-4',
+        collapsed && 'justify-center px-2',
+      )}>
+        <Link to={ROUTES.DASHBOARD} className="flex items-center gap-2">
+          {collapsed ? (
+            <img src={cytovaIcon} alt="Cytova" className="h-7 w-7 shrink-0" />
+          ) : (
+            <img src={cytovaLogo} alt="Cytova" className="h-7 shrink-0 brightness-0 invert" />
+          )}
         </Link>
       </div>
 
-      {/* Navigation */}
-      <ScrollArea className="flex-1 py-2">
-        <nav className="space-y-1 px-2">
-          {sections.map((section, i) => (
-            <div key={section.title}>
-              {i > 0 && <Separator className="my-2 bg-sidebar-border" />}
-              {!collapsed && (
-                <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/50">
-                  {section.title}
-                </p>
-              )}
-              {section.items.map((item) => (
-                <SidebarNavItem
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  collapsed={collapsed}
-                  end={item.end}
-                />
-              ))}
-            </div>
-          ))}
-        </nav>
-      </ScrollArea>
+      {/* Navigation — scrollable, hidden scrollbar.
+          min-h-0 is required so this flex child can shrink below its content
+          height and the overflow-y-auto actually engages. */}
+      <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden py-3 px-2 space-y-0.5">
+        {sections.map((section, i) => (
+          <div key={section.title}>
+            {i > 0 && (
+              <div className="my-2 mx-2 h-px bg-sidebar-border/60" />
+            )}
+            {!collapsed && (
+              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                {section.title}
+              </p>
+            )}
+            {section.items.map((item) => (
+              <SidebarNavItem
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                collapsed={collapsed}
+                end={item.end}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-sidebar-border p-2">
+      {/* Collapse toggle — fixed at bottom */}
+      <div className="shrink-0 border-t border-sidebar-border/60 p-2">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          className="w-full text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-white/5"
         >
           {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          {!collapsed && <span className="ml-2">Collapse</span>}
+          {!collapsed && <span className="ml-2 text-xs">Collapse</span>}
         </Button>
       </div>
     </aside>

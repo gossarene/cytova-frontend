@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Microscope, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ROUTES } from '@/config/routes'
 import { cn } from '@/lib/utils'
+import cytovaLogo from '@/assets/images/branding/cytova-logo.png'
 
 const NAV_LINKS = [
   { label: 'Product', href: '/#product' },
@@ -33,11 +34,8 @@ export function PublicNavbar() {
     <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
-        <Link to={ROUTES.HOME} className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Microscope className="h-4.5 w-4.5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-semibold tracking-tight text-foreground">Cytova</span>
+        <Link to={ROUTES.HOME} className="flex items-center">
+          <img src={cytovaLogo} alt="Cytova" className="h-[28px] w-auto" />
         </Link>
 
         {/* Desktop nav */}

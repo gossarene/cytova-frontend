@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
-  ClipboardCheck, Copy, Check,
+  ClipboardCheck, Copy, Check, Mail,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,10 +24,11 @@ import { useRole, usePermission } from '@/lib/permissions/hooks'
 import {
   useRequest, useConfirmRequest, useCancelRequest,
   useMarkItemCollected, useFinalizeValidation, useRequestLabels,
-  useAccessTokenState, useCreateAccessToken,
+  useAccessTokenState, useCreateAccessToken, useNotifyPatientByEmail,
 } from '../api'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
+import { useLabSettings } from '@/modules/lab_settings/api'
 import { RequestLabelsCard } from '../components/RequestLabelsCard'
 import { RequestReportCard } from '../components/RequestReportCard'
 import { ResultEntryDialog } from '../components/ResultEntryDialog'
@@ -74,6 +75,8 @@ export function RequestDetailPage() {
   const [showFinalize, setShowFinalize] = useState(false)
   const { data: tokenState } = useAccessTokenState(id!)
   const createTokenMut = useCreateAccessToken(id!)
+  const notifyByEmailMut = useNotifyPatientByEmail(id!)
+  const { data: labSettings } = useLabSettings()
   const [linkCopied, setLinkCopied] = useState(false)
   const role = useRole()
   const canCollect = !!role && COLLECTION_ROLES.has(role)
@@ -164,12 +167,45 @@ export function RequestDetailPage() {
             }}
             generating={createTokenMut.isPending}
             linkCopied={linkCopied}
+            whatsappEnabled={labSettings?.notification_enable_whatsapp_share ?? false}
+            emailEnabled={labSettings?.notification_enable_email ?? false}
+            patientHasEmail={!!request.patient_email}
             onCopy={(url) => {
               navigator.clipboard.writeText(url)
               setLinkCopied(true)
               toast.success('Link copied to clipboard.')
               setTimeout(() => setLinkCopied(false), 2000)
             }}
+            onNotifyByEmail={async () => {
+              try {
+                const res = await notifyByEmailMut.mutateAsync()
+                if (res.channels_succeeded.includes('EMAIL')) {
+                  toast.success('Email notification sent')
+                } else {
+                  // Provider failure surfaced through channels_failed —
+                  // tell the operator something concrete.
+                  const failed = res.channels_failed.find((c) => c.channel === 'EMAIL')
+                  toast.error(
+                    failed?.error
+                      ? `Email could not be delivered (${failed.error}).`
+                      : 'Email could not be delivered.',
+                  )
+                }
+              } catch (err: unknown) {
+                const apiErr = err as {
+                  response?: { data?: { errors?: { code?: string; message?: string }[] } }
+                }
+                const first = apiErr.response?.data?.errors?.[0]
+                if (first?.code === 'PATIENT_EMAIL_MISSING') {
+                  toast.error('Patient email is required to send an email notification.')
+                } else if (first?.code === 'EMAIL_CHANNEL_DISABLED') {
+                  toast.error('Email notifications are disabled in lab settings.')
+                } else {
+                  toast.error(first?.message || 'Failed to send email notification.')
+                }
+              }
+            }}
+            sendingEmail={notifyByEmailMut.isPending}
           />
         )}
       </PageHeader>
@@ -591,15 +627,61 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
 import type { AccessTokenState } from '../api'
 
 function SecureLinkActions({
-  tokenState, onGenerate, generating, linkCopied, onCopy,
+  tokenState, onGenerate, generating, linkCopied, onCopy, whatsappEnabled,
+  emailEnabled, patientHasEmail, onNotifyByEmail, sendingEmail,
 }: {
   tokenState: AccessTokenState
   onGenerate: () => void
   generating: boolean
   linkCopied: boolean
   onCopy: (url: string) => void
+  whatsappEnabled: boolean
+  emailEnabled: boolean
+  patientHasEmail: boolean
+  onNotifyByEmail: () => void
+  sendingEmail: boolean
 }) {
+  // Renders the "Notify by email" button. Visible whenever the email
+  // channel is enabled in lab settings and the report exists (the parent
+  // gates on ``request.has_report``). Disabled with a tooltip when the
+  // patient has no email — the backend would still reject this with a
+  // clear error, but pre-disabling avoids a wasted round-trip.
+  //
+  // Available in BOTH the "active link" and "no link yet" branches: the
+  // backend's notify-patient endpoint creates-or-reuses the secure link
+  // automatically, so the operator never needs to click "Generate Secure
+  // Link" first just to send an email.
+  const emailButton = emailEnabled ? (
+    patientHasEmail ? (
+      <Button
+        variant="outline" className="gap-2"
+        onClick={onNotifyByEmail}
+        disabled={sendingEmail}
+      >
+        {sendingEmail
+          ? <Loader2 className="h-4 w-4 animate-spin" />
+          : <Mail className="h-4 w-4" />}
+        Notify by email
+      </Button>
+    ) : (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0}>
+            <Button variant="outline" className="gap-2" disabled>
+              <Mail className="h-4 w-4" />
+              Notify by email
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Patient has no email on file.</TooltipContent>
+      </Tooltip>
+    )
+  ) : null
+
   if (tokenState.status === 'active' && tokenState.access_url) {
+    const whatsappMsg = encodeURIComponent(
+      `Your lab result is ready.\n\nAccess it securely here:\n${tokenState.access_url}`,
+    )
     return (
       <>
         <Button
@@ -609,6 +691,16 @@ function SecureLinkActions({
           {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {linkCopied ? 'Copied' : 'Copy Link'}
         </Button>
+        {emailButton}
+        {whatsappEnabled && (
+          <Button
+            variant="outline" className="gap-2"
+            onClick={() => window.open(`https://wa.me/?text=${whatsappMsg}`, '_blank')}
+          >
+            <Send className="h-4 w-4" />
+            Share via WhatsApp
+          </Button>
+        )}
         {tokenState.expires_at && (
           <span className="text-xs text-muted-foreground">
             Expires {new Date(tokenState.expires_at).toLocaleString()}
@@ -618,16 +710,23 @@ function SecureLinkActions({
     )
   }
 
+  // No active link yet — show "Generate Secure Link" alongside the
+  // email button so the operator has both options without ordering.
+  // Clicking "Notify by email" here will cause the backend to create
+  // the link as part of the email flow.
   return (
-    <Button
-      variant="outline" className="gap-2"
-      onClick={onGenerate}
-      disabled={generating}
-    >
-      {generating
-        ? <Loader2 className="h-4 w-4 animate-spin" />
-        : <Send className="h-4 w-4" />}
-      Generate Secure Link
-    </Button>
+    <>
+      <Button
+        variant="outline" className="gap-2"
+        onClick={onGenerate}
+        disabled={generating}
+      >
+        {generating
+          ? <Loader2 className="h-4 w-4 animate-spin" />
+          : <Send className="h-4 w-4" />}
+        Generate Secure Link
+      </Button>
+      {emailButton}
+    </>
   )
 }
