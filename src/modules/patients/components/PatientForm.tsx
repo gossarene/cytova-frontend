@@ -97,9 +97,10 @@ export function PatientForm({
     },
   })
 
-  async function handleFormSubmit(data: PatientFormData) {
+  async function handleFormSubmit(data: PatientFormData): Promise<boolean> {
     try {
       await onSubmit(data)
+      return true
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: ApiError[] } } }
       const apiErrors = axiosErr.response?.data?.errors
@@ -110,7 +111,9 @@ export function PatientForm({
           }
         }
       }
-      throw err
+      // Don't rethrow — caller already gets the error via the toast/setError
+      // path, and rethrowing causes RHF to log an unhandled-rejection.
+      return false
     }
   }
 
@@ -282,6 +285,7 @@ export function PatientForm({
           {mode === 'create' ? 'Register Patient' : 'Save Changes'}
         </Button>
       </div>
+
     </form>
   )
 }

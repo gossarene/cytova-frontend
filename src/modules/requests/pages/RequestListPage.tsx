@@ -109,6 +109,12 @@ export function RequestListPage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState(dateFromParam)
   const [dateTo, setDateTo] = useState(dateToParam)
+  // Lifecycle (closure_status) filter — replaces the previous pair of
+  // include-delivered / include-archived checkboxes. Default is 'active'
+  // which restricts the list to closure_status=OPEN.
+  const [lifecycle, setLifecycle] = useState<'active' | 'delivered' | 'archived' | 'all'>(
+    (searchParams.get('lifecycle') as 'active' | 'delivered' | 'archived' | 'all' | null) ?? 'active',
+  )
 
   // Resolve patient name when arriving from URL param
   const { data: resolvedPatient } = usePatient(patientIdParam)
@@ -128,6 +134,9 @@ export function RequestListPage() {
   if (patientId) params.patient_id = patientId
   if (dateFrom) params.created_from = dateFrom
   if (dateTo) params.created_to = dateTo
+  // Only emit lifecycle when it differs from the default — keeps the URL
+  // and backend query log clean for the common case.
+  if (lifecycle !== 'active') params.lifecycle = lifecycle
 
   const { data, isLoading, error, refetch } = useRequests(params)
   const requests = data?.data ?? []
@@ -249,6 +258,39 @@ export function RequestListPage() {
               ))}
             </SelectContent>
           </Select>
+          {/* Lifecycle (closure) preset. Workflow status filter (above)
+              and lifecycle filter are independent: workflow narrows DRAFT…
+              CANCELLED; lifecycle narrows OPEN/DELIVERED/ARCHIVED. */}
+          <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-sm">
+            {(['active', 'delivered', 'archived', 'all'] as const).map((value) => {
+              const labels: Record<typeof value, string> = {
+                active: 'Active',
+                delivered: 'Delivered',
+                archived: 'Archived',
+                all: 'All',
+              }
+              const active = lifecycle === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setLifecycle(value)
+                    updateSearchParam('lifecycle', value === 'active' ? '' : value)
+                  }}
+                  className={
+                    'rounded-sm px-3 py-1 transition-colors ' +
+                    (active
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/40')
+                  }
+                  aria-pressed={active}
+                >
+                  {labels[value]}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <Separator />

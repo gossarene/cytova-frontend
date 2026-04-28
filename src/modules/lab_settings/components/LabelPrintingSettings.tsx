@@ -53,10 +53,15 @@ interface Props {
    * to avoid flickering the UI through N single-key updates.
    */
   updateMany: (partial: Partial<LabSettings>) => void
+  /** When true, omit the outer Card wrapper. Used by callers (e.g. the
+      Lab Settings page) that already render the section inside their own
+      collapsible card and don't want a Card-in-Card. The header /
+      description copy is preserved by the wrapping component. */
+  bare?: boolean
 }
 
 
-export function LabelPrintingSettings({ form, update, updateMany }: Props) {
+export function LabelPrintingSettings({ form, update, updateMany, bare = false }: Props) {
   const presetsQ = useLabelPresets()
   const defaultsQ = useLabelDefaults()
 
@@ -131,19 +136,10 @@ export function LabelPrintingSettings({ form, update, updateMany }: Props) {
   // Rendering
   // --------------------------------------------------------------
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Printer className="h-4 w-4 text-muted-foreground" />
-          Label Printing
-        </CardTitle>
-        <CardDescription>
-          Choose how specimen labels are printed for this laboratory. Settings below drive
-          the PDF generated for every request batch.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+  // The body content is identical in both modes — only the outer Card
+  // wrapper is conditionally rendered.
+  const body = (
+    <div className="space-y-6">
         {/* --- Mode selector ------------------------------------ */}
         <FormField
           label="Print mode"
@@ -239,6 +235,25 @@ export function LabelPrintingSettings({ form, update, updateMany }: Props) {
             silently change your labels.
           </p>
         </div>
+    </div>
+  )
+
+  if (bare) return body
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Printer className="h-4 w-4 text-muted-foreground" />
+          Label Printing
+        </CardTitle>
+        <CardDescription>
+          Choose how specimen labels are printed for this laboratory. Settings below drive
+          the PDF generated for every request batch.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {body}
       </CardContent>
     </Card>
   )

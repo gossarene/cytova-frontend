@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, Eye, EyeOff, User, Lock, PenTool, Upload, Trash2, ImageIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -208,6 +209,7 @@ const MAX_SIG_BYTES = 2 * 1024 * 1024
 
 function SignatureCard() {
   const inputRef = useRef<HTMLInputElement>(null)
+  const qc = useQueryClient()
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -257,6 +259,9 @@ function SignatureCard() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(URL.createObjectURL(file))
       setHasSignature(true)
+      // Refresh /users/me so the auth store picks up has_signature=true and
+      // the biologist onboarding banner disappears without a page reload.
+      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
       toast.success('Signature uploaded.')
     } catch {
       toast.error('Failed to upload signature.')
@@ -272,6 +277,7 @@ function SignatureCard() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
       setHasSignature(false)
+      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
       toast.success('Signature removed.')
     } catch {
       toast.error('Failed to remove signature.')

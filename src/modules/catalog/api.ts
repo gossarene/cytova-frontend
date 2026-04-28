@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { SETUP_PROGRESS_QUERY_KEY } from '@/modules/dashboard/api'
 import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/api/types'
 import type {
@@ -357,7 +358,11 @@ export function useCreateExamDefinition() {
       const { data } = await api.post<ApiResponse<ExamDefinitionDetail>>('/catalog/exams/', payload)
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['catalog', 'exams'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['catalog', 'exams'] })
+      // First active exam ticks the catalog_exams setup task.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
@@ -371,6 +376,8 @@ export function useUpdateExamDefinition(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['catalog', 'exams', id] })
       qc.invalidateQueries({ queryKey: ['catalog', 'exams'] })
+      // is_active may have flipped — refresh setup progress.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
     },
   })
 }
@@ -381,7 +388,11 @@ export function useDeactivateExamDefinition(id: string) {
     mutationFn: async () => {
       await api.post(`/catalog/exams/${id}/deactivate/`)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['catalog'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['catalog'] })
+      // Deactivating the last active exam flips catalog_exams back to false.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 

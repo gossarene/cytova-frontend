@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
+import { SETUP_PROGRESS_QUERY_KEY } from '@/modules/dashboard/api'
 import type { ApiResponse } from '@/lib/api/types'
 import type {
   LabelDefaults, LabelPrintMode, LabelPrintPreset,
@@ -25,7 +26,12 @@ export function useUpdateLabSettings() {
       const { data } = await api.patch<ApiResponse<LabSettings>>('/lab-settings/', payload)
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK })
+      // Lab profile, PDF settings, notifications and the logo URL field
+      // all flow through this endpoint — refresh the onboarding banner.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
@@ -42,7 +48,10 @@ export function useUploadLabLogo() {
       )
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK })
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
@@ -99,6 +108,9 @@ export function useDeleteLabLogo() {
       const { data } = await api.delete<ApiResponse<LabSettings>>('/lab-settings/logo/')
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK })
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }

@@ -37,8 +37,23 @@ export function TenantTopbar() {
 
   if (!user) return null
 
+  // Header visual treatment — designed to lift the bar away from page
+  // content without introducing noise:
+  //   - sticky top-0 z-30 → defensive pin. Today TenantLayout keeps
+  //     this header out of the scroll container, so sticky is a no-op
+  //     in the current layout; it kicks in if the layout is later
+  //     refactored to scroll the outer column.
+  //   - border-black/5 → 1px hair-line at ~6% opacity.
+  //   - shadow-[0_2px_4px_rgba(0,_0,_0,_0.03)] → bottom-only soft
+  //     shadow tuned to the spec values. Underscores between the rgba
+  //     channels keep the class safe across class-extractor variants
+  //     that mishandle commas inside arbitrary values.
+  //   - bg-card/85 + backdrop-blur-md → Stripe/Linear-style frosted
+  //     bar that respects the theme's card token (dark mode still
+  //     works). Browsers without backdrop-filter fall back via the
+  //     supports-[] modifier to a plain translucent bar.
   return (
-    <header className="flex h-14 items-center justify-end border-b bg-card px-6 gap-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-4 border-b border-black/5 bg-card/85 px-6 shadow-[0_2px_4px_rgba(0,_0,_0,_0.03)] backdrop-blur-md supports-[backdrop-filter]:bg-card/85">
       <DropdownMenu>
         <DropdownMenuTrigger
           className="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground gap-2 px-2 h-8"

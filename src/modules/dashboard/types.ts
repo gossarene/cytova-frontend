@@ -92,3 +92,116 @@ export interface DashboardProcurement {
   receptions_this_month: number
   receptions_with_discrepancy_this_month: number
 }
+
+
+// ---------------------------------------------------------------------------
+// GET /dashboard/cockpit/
+// Role-aware payload — KPIs/actions vary per role; chart series are global.
+// ---------------------------------------------------------------------------
+
+export type DashboardTone = 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
+
+export interface DashboardKpi {
+  key: string
+  label: string
+  value: number | string  // string for monetary values (e.g. "1234.56")
+  icon: string            // semantic name; resolved by frontend → Lucide
+  tone: DashboardTone
+  href: string | null
+}
+
+export interface DashboardAction {
+  key: string
+  title: string
+  count: number
+  description: string
+  cta: string
+  href: string
+  tone: DashboardTone
+}
+
+// ---------------------------------------------------------------------------
+// GET /dashboard/setup-progress/
+// LAB_ADMIN-only onboarding checklist. Returns ``null`` for other roles.
+// ---------------------------------------------------------------------------
+
+export interface SetupProgressTask {
+  key: string
+  label: string
+  description: string
+  completed: boolean
+  required: boolean
+  href: string
+}
+
+export interface SetupNextStep {
+  /** Stable key — same vocabulary as ``SetupProgressTask.key``. */
+  key: string
+  /** Imperative CTA label, e.g. "Add your first exam". */
+  label: string
+  /** Target route. */
+  url: string
+}
+
+export interface DashboardSetupProgress {
+  /** Required-task completion only — recommended tasks cannot block 100%. */
+  percentage: number
+  /** Across all tasks (incl. recommended). */
+  completed_count: number
+  total_count: number
+  tasks: SetupProgressTask[]
+  /** First incomplete required task; falls back to first incomplete
+   *  recommended once required is done. ``null`` when everything is green
+   *  — the frontend uses null as the trigger for the go-live state. */
+  next_step: SetupNextStep | null
+}
+
+
+// ---------------------------------------------------------------------------
+// GET /dashboard/analytics/
+// Ranked insights for the Analytics row (top exams / top partners / abnormal).
+// All series are scoped to the current month on the backend.
+// ---------------------------------------------------------------------------
+
+export interface RankedExam {
+  code: string
+  name: string
+  count: number
+}
+
+export interface RankedPartner {
+  name: string
+  /** Total billed in the period — sent as a string-encoded decimal. */
+  amount: string
+  /** Distinct request count in the period. */
+  requests: number
+}
+
+export interface AbnormalExam {
+  code: string
+  name: string
+  /** Number of abnormal published results this period. */
+  count: number
+  /** Total published results for this exam this period (denominator). */
+  total: number
+}
+
+export interface DashboardAnalytics {
+  top_exams: RankedExam[]
+  top_partners: RankedPartner[]
+  abnormal_exams: AbnormalExam[]
+}
+
+
+export interface DashboardCockpit {
+  role: string
+  greeting_name: string
+  kpis: DashboardKpi[]
+  actions: DashboardAction[]
+  charts: {
+    requests_over_time: { date: string; count: number }[]
+    requests_by_status: { status: string; count: number }[]
+    requests_by_source: { source: string; count: number }[]
+    results_pipeline:   { status: string; count: number }[]
+  }
+}

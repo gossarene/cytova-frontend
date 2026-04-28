@@ -1,4 +1,10 @@
 export type RequestStatus = 'DRAFT' | 'CONFIRMED' | 'COLLECTION_IN_PROGRESS' | 'IN_ANALYSIS' | 'AWAITING_REVIEW' | 'RETEST_REQUIRED' | 'READY_FOR_RELEASE' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+/** Post-processing closure state, orthogonal to workflow ``status``. */
+export type ClosureStatus = 'OPEN' | 'DELIVERED' | 'ARCHIVED'
+
+/** Lifecycle filter values for the request list. */
+export type LifecyclePreset = 'active' | 'delivered' | 'archived' | 'all'
 export type ItemStatus = 'PENDING' | 'COLLECTED' | 'RESULT_ENTERED' | 'UNDER_REVIEW' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED'
 export type ExecutionMode = 'INTERNAL' | 'SUBCONTRACTED' | 'REJECTED'
 export type SourceType = 'DIRECT_PATIENT' | 'PARTNER_ORGANIZATION'
@@ -55,6 +61,7 @@ export interface RequestListItem {
   patient_id: string
   patient_name: string
   status: RequestStatus
+  closure_status: ClosureStatus
   source_type: SourceType
   billing_mode: RequestBillingMode
   partner_organization_id: string | null
@@ -62,6 +69,20 @@ export interface RequestListItem {
   items_count: number
   created_by_email: string | null
   created_at: string
+  /** Notification tracking — surfaced for list-row badges. */
+  notified_by_email_at: string | null
+  notification_count: number
+  last_patient_notification_channel: string
+}
+
+export interface PatientSummary {
+  id: string
+  full_name: string
+  first_name: string
+  last_name: string
+  document_number: string
+  phone: string
+  email: string
 }
 
 // -- Request item --
@@ -119,6 +140,7 @@ export interface RequestDetail {
       patient has no email on file — backend still revalidates. */
   patient_email: string
   status: RequestStatus
+  closure_status: ClosureStatus
   notes: string
   source_type: SourceType
   billing_mode: RequestBillingMode
@@ -137,6 +159,19 @@ export interface RequestDetail {
   // UI survives reload without needing a separate round-trip.
   has_report: boolean
   current_report: CurrentReportMeta | null
+  /** Aggregated patient identity for the detail header card.
+      Same shape as the patients API exposes to staff. */
+  patient_summary: PatientSummary | null
+  // Notification tracking
+  notified_by_email_at: string | null
+  notified_by_email_by_email: string | null
+  notification_count: number
+  last_patient_notification_channel: string
+  // Lifecycle marker stamps
+  delivered_at: string | null
+  delivered_by_email: string | null
+  archived_at: string | null
+  archived_by_email: string | null
   created_at: string
   updated_at: string
 }

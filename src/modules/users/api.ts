@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
+import { SETUP_PROGRESS_QUERY_KEY } from '@/modules/dashboard/api'
 import type { ApiResponse } from '@/lib/api/types'
 import type { UserListItem, UserDetail, UserPermissions, RoleInfo } from './types'
 import type { TenantRole } from '@/lib/auth/types'
@@ -34,7 +35,11 @@ export function useCreateUser() {
       const { data } = await api.post<ApiResponse<UserDetail>>('/users/', p)
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      // First teammate ticks the team_users setup task.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
@@ -62,6 +67,8 @@ export function useDeactivateUser(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', id] })
       qc.invalidateQueries({ queryKey: ['users'] })
+      // Deactivating the last teammate flips team_users back to false.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
     },
   })
 }

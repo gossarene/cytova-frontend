@@ -15,6 +15,10 @@ export interface AuthUser {
   firstName: string
   lastName: string
   role: TenantRole
+  /** Whether the user has uploaded a validation signature image. Driven
+   *  by ``/users/me/`` and refreshed when it does. ``undefined`` means
+   *  the auth store hasn't loaded the field yet (don't treat as false). */
+  hasSignature?: boolean
 }
 
 export interface LoginRequest {

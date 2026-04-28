@@ -4,6 +4,7 @@ import type { ApiResponse } from '@/lib/api/types'
 import type {
   DashboardOverview, DashboardPatients, DashboardRequests,
   DashboardResults, DashboardStock, DashboardAlerts, DashboardProcurement,
+  DashboardCockpit, DashboardAnalytics, DashboardSetupProgress,
 } from './types'
 
 function useDashboardQuery<T>(key: string, path: string) {
@@ -44,4 +45,28 @@ export function useDashboardAlerts() {
 
 export function useDashboardProcurement() {
   return useDashboardQuery<DashboardProcurement>('procurement', 'procurement')
+}
+
+export function useDashboardCockpit() {
+  return useDashboardQuery<DashboardCockpit>('cockpit', 'cockpit')
+}
+
+export function useDashboardAnalytics() {
+  return useDashboardQuery<DashboardAnalytics>('analytics', 'analytics')
+}
+
+/** Stable query key for the setup-progress endpoint. Exported so
+ *  mutations across modules (lab settings, catalog, partners, users)
+ *  can call ``qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })``
+ *  after a write — the OnboardingBanner observes this query and
+ *  re-renders automatically when it refetches. */
+export const SETUP_PROGRESS_QUERY_KEY = ['dashboard', 'setup-progress'] as const
+
+/** Returns ``null`` for non-LAB_ADMIN users — the hook surfaces that
+ *  through ``data === null``, so the consumer can branch on it. */
+export function useDashboardSetupProgress() {
+  return useDashboardQuery<DashboardSetupProgress | null>(
+    'setup-progress',
+    'setup-progress',
+  )
 }

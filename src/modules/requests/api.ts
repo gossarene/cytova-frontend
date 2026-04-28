@@ -440,6 +440,38 @@ export interface NotifyPatientResponse {
   channels_failed: ChannelOutcome[]
 }
 
+export function useMarkRequestDelivered(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RequestDetail> => {
+      const { data } = await api.post<ApiResponse<RequestDetail>>(
+        `/requests/${requestId}/mark-delivered/`,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+      qc.invalidateQueries({ queryKey: ['requests', 'list'] })
+    },
+  })
+}
+
+export function useArchiveRequest(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RequestDetail> => {
+      const { data } = await api.post<ApiResponse<RequestDetail>>(
+        `/requests/${requestId}/archive/`,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+      qc.invalidateQueries({ queryKey: ['requests', 'list'] })
+    },
+  })
+}
+
 export function useNotifyPatientByEmail(requestId: string) {
   const qc = useQueryClient()
   return useMutation({

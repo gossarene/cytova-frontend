@@ -1,10 +1,11 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
-  ClipboardCheck, Copy, Check, Mail,
+  ClipboardCheck, Copy, Check, Mail, Phone, User, Archive,
+  PackageCheck, ExternalLink,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,8 +26,10 @@ import {
   useRequest, useConfirmRequest, useCancelRequest,
   useMarkItemCollected, useFinalizeValidation, useRequestLabels,
   useAccessTokenState, useCreateAccessToken, useNotifyPatientByEmail,
+  useMarkRequestDelivered, useArchiveRequest,
 } from '../api'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
 import { useLabSettings } from '@/modules/lab_settings/api'
 import { RequestLabelsCard } from '../components/RequestLabelsCard'
@@ -76,11 +79,18 @@ export function RequestDetailPage() {
   const { data: tokenState } = useAccessTokenState(id!)
   const createTokenMut = useCreateAccessToken(id!)
   const notifyByEmailMut = useNotifyPatientByEmail(id!)
+  const markDeliveredMut = useMarkRequestDelivered(id!)
+  const archiveMut = useArchiveRequest(id!)
   const { data: labSettings } = useLabSettings()
   const [linkCopied, setLinkCopied] = useState(false)
+  const [showPatientModal, setShowPatientModal] = useState(false)
+  const [showResendConfirm, setShowResendConfirm] = useState(false)
+  const [showMarkDelivered, setShowMarkDelivered] = useState(false)
+  const [showArchive, setShowArchive] = useState(false)
   const role = useRole()
   const canCollect = !!role && COLLECTION_ROLES.has(role)
   const canFinalize = usePermission(P.REQUESTS_FINALIZE)
+  const canEditPatient = usePermission(P.PATIENTS_UPDATE)
   const isCollectionPhase = request?.status === 'CONFIRMED' || request?.status === 'COLLECTION_IN_PROGRESS'
   // Backend rule (see services.AnalysisRequestItemService.mark_collected):
   // collection is blocked until a RequestLabelBatch exists for the request.
@@ -131,6 +141,64 @@ export function RequestDetailPage() {
     }
   }
 
+  async function doSendNotification() {
+    setShowResendConfirm(false)
+    try {
+      const res = await notifyByEmailMut.mutateAsync()
+      if (res.channels_succeeded.includes('EMAIL')) {
+        toast.success('Email notification sent')
+      } else {
+        const failed = res.channels_failed.find((c) => c.channel === 'EMAIL')
+        toast.error(
+          failed?.error
+            ? `Email could not be delivered (${failed.error}).`
+            : 'Email could not be delivered.',
+        )
+      }
+    } catch (err: unknown) {
+      const apiErr = err as {
+        response?: { data?: { errors?: { code?: string; message?: string }[] } }
+      }
+      const first = apiErr.response?.data?.errors?.[0]
+      if (first?.code === 'PATIENT_EMAIL_MISSING') {
+        toast.error('Patient email is required to send an email notification.')
+      } else if (first?.code === 'EMAIL_CHANNEL_DISABLED') {
+        toast.error('Email notifications are disabled in lab settings.')
+      } else {
+        toast.error(first?.message || 'Failed to send email notification.')
+      }
+    }
+  }
+
+  async function handleMarkDelivered() {
+    try {
+      await markDeliveredMut.mutateAsync()
+      toast.success('Request marked as delivered.')
+      setShowMarkDelivered(false)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+        ?.response?.data?.errors?.[0]?.message
+      toast.error(msg || 'Failed to mark as delivered.')
+    }
+  }
+
+  async function handleArchive() {
+    try {
+      await archiveMut.mutateAsync()
+      toast.success('Request archived.')
+      setShowArchive(false)
+    } catch (err: unknown) {
+      // Show a precise field-level message when the server provides one
+      // (e.g. illegal state-machine transition); otherwise fall back to
+      // the generic copy. The mutation never crashes the page — failure
+      // is contained to this toast.
+      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+        ?.response?.data?.errors?.[0]?.message
+      toast.error(msg || 'Could not archive this request.')
+      setShowArchive(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -176,50 +244,90 @@ export function RequestDetailPage() {
               toast.success('Link copied to clipboard.')
               setTimeout(() => setLinkCopied(false), 2000)
             }}
-            onNotifyByEmail={async () => {
-              try {
-                const res = await notifyByEmailMut.mutateAsync()
-                if (res.channels_succeeded.includes('EMAIL')) {
-                  toast.success('Email notification sent')
-                } else {
-                  // Provider failure surfaced through channels_failed —
-                  // tell the operator something concrete.
-                  const failed = res.channels_failed.find((c) => c.channel === 'EMAIL')
-                  toast.error(
-                    failed?.error
-                      ? `Email could not be delivered (${failed.error}).`
-                      : 'Email could not be delivered.',
-                  )
-                }
-              } catch (err: unknown) {
-                const apiErr = err as {
-                  response?: { data?: { errors?: { code?: string; message?: string }[] } }
-                }
-                const first = apiErr.response?.data?.errors?.[0]
-                if (first?.code === 'PATIENT_EMAIL_MISSING') {
-                  toast.error('Patient email is required to send an email notification.')
-                } else if (first?.code === 'EMAIL_CHANNEL_DISABLED') {
-                  toast.error('Email notifications are disabled in lab settings.')
-                } else {
-                  toast.error(first?.message || 'Failed to send email notification.')
-                }
+            onNotifyByEmail={() => {
+              // First click after a previous successful notification → require
+              // explicit confirmation. Otherwise send immediately.
+              if (request.notification_count > 0) {
+                setShowResendConfirm(true)
+              } else {
+                void doSendNotification()
               }
             }}
             sendingEmail={notifyByEmailMut.isPending}
           />
         )}
+        {/* Mark as delivered — visible only when closure is OPEN, the
+            workflow is past validation, AND the report PDF has been
+            generated. Closing a request without a report would leave it
+            half-finished; the backend rejects it too. Idempotent on the
+            backend, but we still hide once delivered to keep the UI honest. */}
+        {request.closure_status === 'OPEN'
+          && request.has_report
+          && (request.status === 'VALIDATED' || request.status === 'COMPLETED') && (
+            <Button
+              variant="outline" className="gap-2"
+              onClick={() => setShowMarkDelivered(true)}
+            >
+              <PackageCheck className="h-4 w-4" /> Mark as delivered
+            </Button>
+          )}
+        {/* Archive — lab-admin only; available for any non-archived row
+            whose workflow has reached a terminal/finalized state AND has a
+            generated report. Workflow status no longer carries
+            DELIVERED/ARCHIVED, so this is gated on closure_status. */}
+        <Can permission={P.REQUESTS_CANCEL}>
+          {request.closure_status !== 'ARCHIVED'
+            && request.has_report
+            && (['VALIDATED', 'COMPLETED', 'CANCELLED'] as const).includes(
+              request.status as 'VALIDATED' | 'COMPLETED' | 'CANCELLED',
+            ) && (
+              <Button
+                variant="outline" className="gap-2"
+                onClick={() => setShowArchive(true)}
+              >
+                <Archive className="h-4 w-4" /> Archive
+              </Button>
+            )}
+        </Can>
       </PageHeader>
+
+      {/* Patient summary + notification status — top-of-page card, above the
+          request details. Surfaces the patient identity at a glance and the
+          "Patient notified by email" badge with timestamp. */}
+      {request.patient_summary && (
+        <PatientSummaryCard
+          summary={request.patient_summary}
+          notifiedAt={request.notified_by_email_at}
+          notifiedByEmail={request.notified_by_email_by_email}
+          notificationCount={request.notification_count}
+          onView={() => setShowPatientModal(true)}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Request info */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 Request Details
               </CardTitle>
-              <StatusBadge status={request.status} />
+              <div className="flex items-center gap-2">
+                <StatusBadge status={request.status} />
+                {/* Closure badge — only shown when not the OPEN default,
+                    so the active worklist isn't visually noisy. */}
+                {request.closure_status === 'DELIVERED' && (
+                  <Badge variant="secondary" className="gap-1">
+                    <PackageCheck className="h-3 w-3" /> Delivered
+                  </Badge>
+                )}
+                {request.closure_status === 'ARCHIVED' && (
+                  <Badge variant="outline" className="gap-1 text-muted-foreground">
+                    <Archive className="h-3 w-3" /> Archived
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -389,6 +497,31 @@ export function RequestDetailPage() {
         description={`This will finalize validation for request ${request.public_reference}. After finalization, item-level review modifications will no longer be possible.`}
         confirmLabel="Finalize Validation" onConfirm={handleFinalize} isLoading={finalizeMut.isPending}
       />
+      <ConfirmDialog open={showResendConfirm} onOpenChange={setShowResendConfirm}
+        title="Send another email notification?"
+        description="This patient has already been notified by email. Send another notification?"
+        confirmLabel="Send again" onConfirm={() => void doSendNotification()}
+        isLoading={notifyByEmailMut.isPending}
+      />
+      <ConfirmDialog open={showMarkDelivered} onOpenChange={setShowMarkDelivered}
+        title="Mark request as delivered"
+        description={`This will mark request ${request.public_reference} as delivered and remove it from the default active list. You can still find it via the Delivered filter.`}
+        confirmLabel="Mark as delivered" onConfirm={handleMarkDelivered}
+        isLoading={markDeliveredMut.isPending}
+      />
+      <ConfirmDialog open={showArchive} onOpenChange={setShowArchive}
+        title="Archive this request" variant="destructive"
+        description={`This will archive request ${request.public_reference} and hide it from the default list. The request remains accessible via the Archived filter and a status filter.`}
+        confirmLabel="Archive" onConfirm={handleArchive}
+        isLoading={archiveMut.isPending}
+      />
+      {showPatientModal && request.patient_summary && (
+        <PatientDetailsModal
+          summary={request.patient_summary}
+          canEdit={canEditPatient}
+          onClose={() => setShowPatientModal(false)}
+        />
+      )}
     </div>
   )
 }
@@ -664,17 +797,21 @@ function SecureLinkActions({
         Notify by email
       </Button>
     ) : (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={0}>
-            <Button variant="outline" className="gap-2" disabled>
-              <Mail className="h-4 w-4" />
-              Notify by email
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>Patient has no email on file.</TooltipContent>
-      </Tooltip>
+      // Disabled-with-hint variant. We use the native ``title`` attribute
+      // rather than a Tooltip wrapper because the project uses Base UI
+      // tooltips (not Radix) — Base UI's TooltipTrigger does not honour
+      // ``asChild`` and ends up rendering its own <button> around our
+      // <button>, producing nested-button warnings. ``title`` gives the
+      // same hint with zero composition risk.
+      <Button
+        variant="outline"
+        className="gap-2"
+        disabled
+        title="Patient has no email on file."
+      >
+        <Mail className="h-4 w-4" />
+        Notify by email
+      </Button>
     )
   ) : null
 
@@ -728,5 +865,111 @@ function SecureLinkActions({
       </Button>
       {emailButton}
     </>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Patient summary card (header) + notification badge
+// ---------------------------------------------------------------------------
+
+import type { PatientSummary } from '../types'
+
+function PatientSummaryCard({
+  summary, notifiedAt, notifiedByEmail, notificationCount, onView,
+}: {
+  summary: PatientSummary
+  notifiedAt: string | null
+  notifiedByEmail: string | null
+  notificationCount: number
+  onView: () => void
+}) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate font-semibold tracking-tight">{summary.full_name}</p>
+              <span className="font-mono text-xs text-muted-foreground">{summary.document_number}</span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {summary.email && (
+                <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {summary.email}</span>
+              )}
+              {summary.phone && (
+                <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {summary.phone}</span>
+              )}
+            </div>
+            {notifiedAt && (
+              <Badge variant="secondary" className="mt-2 gap-1">
+                <Mail className="h-3 w-3" />
+                Patient notified by email
+                <span className="text-muted-foreground">· {formatDateTime(notifiedAt)}</span>
+                {notificationCount > 1 && <span className="text-muted-foreground">(×{notificationCount})</span>}
+                {notifiedByEmail && <span className="text-muted-foreground">· by {notifiedByEmail}</span>}
+              </Badge>
+            )}
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={onView}>
+          <ExternalLink className="h-4 w-4" />
+          View patient details
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Patient details modal
+// ---------------------------------------------------------------------------
+
+function PatientDetailsModal({
+  summary, canEdit, onClose,
+}: {
+  summary: PatientSummary
+  canEdit: boolean
+  onClose: () => void
+}) {
+  // ROUTES.PATIENT_DETAIL is a template like /patients/:id — substitute the id
+  // here so we never depend on a generated path helper.
+  const patientHref = ROUTES.PATIENT_DETAIL.replace(':id', summary.id)
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Patient details</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">{summary.full_name}</p>
+            <p className="font-mono text-xs text-muted-foreground">{summary.document_number}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Email" value={summary.email || '—'} />
+            <Field label="Phone" value={summary.phone || '—'} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Open the full patient record for medical history, request history, and edits.
+          </p>
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          {canEdit && (
+            <Link to={patientHref}>
+              <Button className="gap-2">
+                <Pencil className="h-4 w-4" />
+                Edit patient
+              </Button>
+            </Link>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Building2, FileText, Upload, Trash2, ImageIcon, Receipt, Eye, EyeOff } from 'lucide-react'
+import {
+  Loader2, Building2, FileText, Upload, Trash2, ImageIcon, Receipt,
+  Eye, EyeOff, ChevronDown, AlertTriangle, Bell, ShieldCheck, Printer,
+} from 'lucide-react'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { useUnsavedChangesGuard } from '@/lib/forms/useUnsavedChangesGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -73,38 +78,63 @@ export function LabSettingsPage() {
 
 function LabSettingsForm({ initial }: { initial: LabSettings }) {
   const updateMut = useUpdateLabSettings()
+  // The "saved" snapshot is the source of truth for dirty detection. When a
+  // save succeeds we promote the current form to the saved snapshot; Discard
+  // resets the form back to it. Using state (not a ref) means React re-renders
+  // and the dirty diff is recomputed every keystroke.
+  const [saved, setSaved] = useState<LabSettings>(initial)
   const [form, setForm] = useState<LabSettings>(initial)
-  const [dirty, setDirty] = useState(false)
+
+  // Structural diff via JSON.stringify — fields are flat primitives or short
+  // strings/numbers, so this is cheap. Avoids tracking dirty as a flag that
+  // can drift out of sync with field-level edits.
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved)
 
   function update<K extends keyof LabSettings>(key: K, value: LabSettings[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-    setDirty(true)
   }
 
   function updateMany(partial: Partial<LabSettings>) {
     setForm((prev) => ({ ...prev, ...partial }))
-    setDirty(true)
   }
 
-  async function handleSave() {
-    if (!form) return
+  // Returns ``true`` on success so the navigation modal can decide whether
+  // to proceed with the pending route change. The PageHeader / banner Save
+  // buttons ignore the boolean — they just trigger the side effects (toast,
+  // dirty reset) and stay on the page.
+  async function handleSave(): Promise<boolean> {
+    if (!form) return false
     try {
       const { updated_at: _omit, ...payload } = form
       void _omit
-      await updateMut.mutateAsync(payload)
+      const fresh = await updateMut.mutateAsync(payload)
       toast.success('Lab settings updated.')
-      setDirty(false)
+      // Promote both snapshots to the server's response so updated_at stays
+      // current and the next dirty diff starts from a clean baseline.
+      setSaved(fresh)
+      setForm(fresh)
+      return true
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
         ?.response?.data?.errors?.[0]?.message
       toast.error(msg || 'Failed to update settings.')
+      return false
     }
   }
 
   function handleReset() {
-    setForm(initial)
-    setDirty(false)
+    setForm(saved)
   }
+
+  // Unsaved-changes guard: shared across the app. Browser-level
+  // beforeunload + SPA-level useBlocker + Cytova-styled modal all live
+  // inside the hook; we just provide isDirty + the two actions.
+  const { GuardModal } = useUnsavedChangesGuard({
+    isDirty: dirty,
+    onSave: handleSave,
+    onDiscard: handleReset,
+    message: 'You have unsaved changes in Lab Settings. What would you like to do?',
+  })
 
   return (
     <div className="space-y-6">
@@ -123,18 +153,22 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
         </Can>
       </PageHeader>
 
-      {/* Laboratory Identity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            Laboratory Identity
-          </CardTitle>
-          <CardDescription>
-            Displayed on report headers. These values are used on every generated report.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {dirty && (
+        <DirtyBanner
+          saving={updateMut.isPending}
+          onSave={handleSave}
+          onDiscard={handleReset}
+        />
+      )}
+
+      {/* Laboratory Identity — open by default (most-edited section) */}
+      <CollapsibleCard
+        defaultOpen
+        icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+        title="Laboratory Identity"
+        description="Displayed on report headers. These values are used on every generated report."
+      >
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Laboratory name" htmlFor="lab_name">
               <Input
@@ -187,21 +221,14 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
               onChange={(e) => update('legal_footer', e.target.value)}
             />
           </FormField>
-        </CardContent>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      {/* Report Display Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Report Display Options
-          </CardTitle>
-          <CardDescription>
-            Toggle what appears on generated patient reports. Changes apply to newly generated reports.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <CollapsibleCard
+        icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+        title="Report Display Options"
+        description="Toggle what appears on generated patient reports. Changes apply to newly generated reports."
+      >
           <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {DISPLAY_OPTIONS.map(({ key, label, hint }) => (
               <div
@@ -220,21 +247,14 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
 
-      {/* Billing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-            Billing
-          </CardTitle>
-          <CardDescription>
-            Tax rate and financial document settings for partner invoicing.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <CollapsibleCard
+        icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
+        title="Billing"
+        description="Tax rate and financial document settings for partner invoicing."
+      >
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Financial document type" htmlFor="doc_mode"
@@ -268,21 +288,15 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
               />
             </FormField>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      {/* Result PDF Protection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Result PDF Protection
-          </CardTitle>
-          <CardDescription>
-            Password-protect generated result PDFs using patient data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <CollapsibleCard
+        icon={<ShieldCheck className="h-4 w-4 text-muted-foreground" />}
+        title="Result PDF Protection"
+        description="Password-protect generated result PDFs using patient data."
+      >
+        <div className="space-y-4">
           <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2">
             <div className="min-w-0 flex-1">
               <Label htmlFor="pdf-pw-enabled" className="text-sm">Enable PDF password protection</Label>
@@ -299,21 +313,14 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
           {form.result_pdf_password_enabled && (
             <PdfProtectionFields form={form} update={update} />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      {/* Notification Channels */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Patient Notifications
-          </CardTitle>
-          <CardDescription>
-            Control how patients can access their results. Email and SMS will be available in a future update.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <CollapsibleCard
+        icon={<Bell className="h-4 w-4 text-muted-foreground" />}
+        title="Patient Notifications"
+        description="Control how patients can access their results. SMS will be available in a future update."
+      >
           <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {NOTIFICATION_OPTIONS.map(({ key, label, hint, disabled }) => (
               <div key={key} className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2">
@@ -330,15 +337,22 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
 
-      {/* Label Printing */}
-      <LabelPrintingSettings
-        form={form}
-        update={(key, value) => update(key as keyof LabSettings, value as never)}
-        updateMany={updateMany}
-      />
+      <CollapsibleCard
+        icon={<Printer className="h-4 w-4 text-muted-foreground" />}
+        title="Label Printing"
+        description="Choose how specimen labels are printed for this laboratory. Settings below drive the PDF generated for every request batch."
+      >
+        <LabelPrintingSettings
+          bare
+          form={form}
+          update={(key, value) => update(key as keyof LabSettings, value as never)}
+          updateMany={updateMany}
+        />
+      </CollapsibleCard>
+
+      <GuardModal />
     </div>
   )
 }
@@ -543,3 +557,114 @@ function LogoUploader({
     </div>
   )
 }
+
+
+// ---------------------------------------------------------------------------
+// CollapsibleCard
+//
+// Card whose CardHeader is a button toggling open/close. CRITICAL: the body
+// is hidden via CSS (`hidden` class), not unmounted. Form state in the
+// children — driven by useState in the parent form — survives collapse
+// because the inputs stay in the React tree.
+// ---------------------------------------------------------------------------
+
+function CollapsibleCard({
+  icon, title, description, defaultOpen = false, children,
+}: {
+  icon: React.ReactNode
+  title: string
+  description?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full text-left"
+      >
+        <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="flex items-center gap-2 text-base">
+                {icon}
+                {title}
+              </CardTitle>
+              {description && (
+                <CardDescription className="mt-1.5">{description}</CardDescription>
+              )}
+            </div>
+            <ChevronDown
+              className={cn(
+                'mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                open && 'rotate-180',
+              )}
+            />
+          </div>
+        </CardHeader>
+      </button>
+      {/* hidden, not unmounted, so children retain their internal state. */}
+      <CardContent className={cn('space-y-4', !open && 'hidden')}>
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// DirtyBanner
+//
+// Sticky soft-orange banner shown when the form has unsaved changes. The
+// Save button calls the same handler as the PageHeader Save (single source
+// of truth for the save flow). Discard resets to the last saved snapshot.
+// `top-0` keeps it pinned while the user scrolls long sections.
+// ---------------------------------------------------------------------------
+
+function DirtyBanner({
+  saving, onSave, onDiscard,
+}: {
+  saving: boolean
+  onSave: () => void
+  onDiscard: () => void
+}) {
+  return (
+    <div
+      role="status"
+      className="sticky top-0 z-20 flex flex-col gap-3 rounded-lg border border-amber-300/60 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-center gap-2.5">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <span className="text-sm font-medium">You have unsaved changes</span>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDiscard}
+          disabled={saving}
+          className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+        >
+          Discard changes
+        </Button>
+        <Button
+          size="sm"
+          onClick={onSave}
+          disabled={saving}
+          className="bg-amber-600 text-white hover:bg-amber-700"
+        >
+          {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+          Save changes
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+
+// Unsaved-changes dialog now lives in `lib/forms/useUnsavedChangesGuard`
+// and is shared with patient forms, request forms, and any other dirty-state
+// surface. The guard hook is wired in LabSettingsForm above.

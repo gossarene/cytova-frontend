@@ -15,6 +15,8 @@ interface MeResponse {
   full_name: string
   role: TenantRole
   is_active: boolean
+  /** Backend exposes this on /users/me/; drives the biologist signature banner. */
+  has_signature: boolean
   created_at: string
   updated_at: string
   permissions: string[]
@@ -42,6 +44,7 @@ export function useCurrentUser() {
           firstName: me.first_name,
           lastName: me.last_name,
           role: me.role,
+          hasSignature: me.has_signature,
         },
         permissions: new Set(me.permissions),
       })
@@ -84,6 +87,7 @@ export function useRefreshPermissions() {
           firstName: me.first_name,
           lastName: me.last_name,
           role: me.role,
+          hasSignature: me.has_signature,
         },
         permissions: new Set(me.permissions),
       })

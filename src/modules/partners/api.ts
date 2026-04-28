@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
+import { SETUP_PROGRESS_QUERY_KEY } from '@/modules/dashboard/api'
 import type { ApiResponse } from '@/lib/api/types'
 import type { PartnerListItem, PartnerDetail, PartnerExamPriceItem } from './types'
 
@@ -31,7 +32,11 @@ export function useCreatePartner() {
       const { data } = await api.post<ApiResponse<PartnerDetail>>('/partners/', payload)
       return data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['partners'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['partners'] })
+      // First active partner ticks the (recommended) partners setup task.
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
@@ -55,7 +60,10 @@ export function useDeactivatePartner(id: string) {
     mutationFn: async () => {
       await api.post(`/partners/${id}/deactivate/`)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['partners'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['partners'] })
+      qc.invalidateQueries({ queryKey: SETUP_PROGRESS_QUERY_KEY })
+    },
   })
 }
 
