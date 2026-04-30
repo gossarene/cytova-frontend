@@ -18,6 +18,7 @@ import { ROUTES } from '@/config/routes'
 
 const schema = z.object({
   email: z.string().email('Valid email required'),
+  title: z.string().max(20).optional(),
   first_name: z.string().min(1, 'Required').max(100),
   last_name: z.string().min(1, 'Required').max(100),
   role: z.string().min(1, 'Role is required'),
@@ -26,6 +27,16 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+/** Roles for which a professional title is meaningful on reports.
+ *  The dropdown only renders for these — receptionists / billing
+ *  officers don't sign clinical documents. */
+const TITLE_ROLES: TenantRole[] = ['LAB_ADMIN', 'BIOLOGIST', 'TECHNICIAN']
+
+const TITLE_OPTIONS = [
+  '', 'Mr', 'Mrs', 'Ms', 'Dr', 'Pr', 'Prof',
+  'Biologist', 'Pharmacist', 'Technician',
+]
+
 export function UserCreatePage() {
   const navigate = useNavigate()
   const mutation = useCreateUser()
@@ -33,13 +44,20 @@ export function UserCreatePage() {
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', first_name: '', last_name: '', role: '', password: '' },
+    defaultValues: { email: '', title: '', first_name: '', last_name: '', role: '', password: '' },
   })
+
+  const watchedRole = watch('role') as TenantRole | ''
+  const showTitle = TITLE_ROLES.includes(watchedRole as TenantRole)
 
   async function onSubmit(data: FormData) {
     try {
       const user = await mutation.mutateAsync({
         ...data,
+        // Only forward title for roles where it's meaningful — for
+        // other roles the field stays hidden and the form value may
+        // still carry stale data from an earlier role choice.
+        title: showTitle ? (data.title ?? '') : '',
         role: data.role as TenantRole,
       })
       toast.success(`User ${user.full_name} created.`)
@@ -85,6 +103,32 @@ export function UserCreatePage() {
                 </SelectContent>
               </Select>
             </FormField>
+
+            {/* Professional title — surfaces on signed reports and in
+                medical attribution. Only meaningful for roles that
+                validate or perform exams. */}
+            {showTitle && (
+              <FormField
+                label="Professional title"
+                htmlFor="u-title"
+                error={errors.title?.message}
+                hint='Used on signed reports (e.g. "Dr René GOSSA").'
+              >
+                <Select
+                  value={watch('title') ?? ''}
+                  onValueChange={(v) => setValue('title', v ?? '', { shouldValidate: true })}
+                >
+                  <SelectTrigger id="u-title"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    {TITLE_OPTIONS.map((t) => (
+                      <SelectItem key={t || 'none'} value={t}>
+                        {t || '— None —'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
 
             <Separator />
 

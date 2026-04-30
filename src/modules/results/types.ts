@@ -67,16 +67,24 @@ export interface ResultDetail {
   internal_notes: string
   notes: string
   entered_by_email: string | null
+  entered_by_display: string | null
   entered_at: string
   submitted_by_email: string | null
+  submitted_by_display: string | null
   submitted_at: string | null
   validation_notes: string
   validated_by_email: string | null
+  /** Validator carries the title-prefixed name (medical signature
+   *  context) — e.g. "Dr René GOSSA". Falls back to email when the
+   *  StaffUser record is gone. */
+  validated_by_display: string | null
   validated_at: string | null
   rejection_notes: string
   rejected_by_email: string | null
+  rejected_by_display: string | null
   rejected_at: string | null
   published_by_email: string | null
+  published_by_display: string | null
   published_at: string | null
   files: ResultFile[]
   values: ResultValueItem[]

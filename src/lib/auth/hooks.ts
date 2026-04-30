@@ -10,6 +10,7 @@ import type { ApiResponse } from '@/lib/api/types'
 interface MeResponse {
   id: string
   email: string
+  title: string
   first_name: string
   last_name: string
   full_name: string
@@ -44,6 +45,7 @@ export function useCurrentUser() {
           firstName: me.first_name,
           lastName: me.last_name,
           role: me.role,
+          title: me.title ?? '',
           hasSignature: me.has_signature,
         },
         permissions: new Set(me.permissions),
@@ -87,6 +89,7 @@ export function useRefreshPermissions() {
           firstName: me.first_name,
           lastName: me.last_name,
           role: me.role,
+          title: me.title ?? '',
           hasSignature: me.has_signature,
         },
         permissions: new Set(me.permissions),

@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Edit, Ban, Building2, CreditCard, Mail, Phone, MapPin } from 'lucide-react'
+import { Edit, Ban, Building2, CreditCard, Mail, Phone, MapPin, Palette } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,7 @@ import { Can } from '@/lib/permissions/Can'
 import { P } from '@/lib/permissions/constants'
 import { PartnerForm } from '../components/PartnerForm'
 import { PartnerExamPricesSection } from '../components/PartnerExamPricesSection'
+import { PartnerBrandingDrawer } from '../components/PartnerBrandingDrawer'
 import { usePartner, useUpdatePartner, useDeactivatePartner } from '../api'
 import { formatDateTime } from '@/lib/utils/date'
 import { ROUTES } from '@/config/routes'
@@ -25,6 +26,7 @@ export function PartnerDetailPage() {
   const deactivateMut = useDeactivatePartner(id!)
   const [editing, setEditing] = useState(false)
   const [showDeactivate, setShowDeactivate] = useState(false)
+  const [showBranding, setShowBranding] = useState(false)
 
   if (error) return <ErrorState onRetry={refetch} />
   if (isLoading || !partner) return <div className="space-y-6"><CardSkeleton /><CardSkeleton /></div>
@@ -51,6 +53,11 @@ export function PartnerDetailPage() {
       >
         {!editing && (
           <>
+            <Can permission={P.PARTNERS_MANAGE}>
+              <Button variant="outline" className="gap-2" onClick={() => setShowBranding(true)}>
+                <Palette className="h-4 w-4" /> Configure report branding
+              </Button>
+            </Can>
             <Can permission={P.PARTNERS_MANAGE}>
               <Button variant="outline" className="gap-2" onClick={() => setEditing(true)}><Edit className="h-4 w-4" /> Edit</Button>
             </Can>
@@ -135,6 +142,12 @@ export function PartnerDetailPage() {
       <ConfirmDialog open={showDeactivate} onOpenChange={setShowDeactivate} title="Deactivate partner"
         description={`"${partner.name}" will be hidden from new requests. Existing requests are not affected.`}
         confirmLabel="Deactivate" variant="destructive" onConfirm={handleDeactivate} isLoading={deactivateMut.isPending}
+      />
+
+      <PartnerBrandingDrawer
+        open={showBranding}
+        onOpenChange={setShowBranding}
+        partner={partner}
       />
     </div>
   )

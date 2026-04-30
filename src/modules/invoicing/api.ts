@@ -106,17 +106,3 @@ export function useGenerateInvoicePdf(id: string) {
   })
 }
 
-export function useGenerateStatement(id: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post<ApiResponse<InvoiceDetail>>(
-        `/invoicing/${id}/generate-statement/`,
-      )
-      return data.data
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...QK, id] })
-    },
-  })
-}

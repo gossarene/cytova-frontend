@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, ClipboardList, FileCheck, BookOpen,
   Package, Truck, ShoppingCart, Building2, Bell, UserCog,
-  ScrollText, Settings, Beaker, Receipt,
+  ScrollText, Settings, Beaker, Receipt, BarChart3,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth/store'
@@ -51,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Partners', href: ROUTES.PARTNERS, icon: Building2, permission: P.PARTNERS_VIEW },
       { label: 'Invoicing', href: ROUTES.INVOICES, icon: Receipt, permission: P.BILLING_VIEW },
+      { label: 'Financial Reports', href: ROUTES.FINANCIAL_REPORTS, icon: BarChart3, permission: P.BILLING_VIEW },
     ],
   },
   {

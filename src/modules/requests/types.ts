@@ -151,9 +151,14 @@ export interface RequestDetail {
   source_notes: string
   confirmed_at: string | null
   confirmed_by_email: string | null
+  /** Display-name fallback companion to confirmed_by_email. ``null`` when
+   *  the actor record is gone (frontend falls back to email). */
+  confirmed_by_display: string | null
   cancelled_at: string | null
   cancelled_by_email: string | null
+  cancelled_by_display: string | null
   created_by_email: string | null
+  created_by_display: string | null
   items: RequestItemBrief[]
   // Report availability is served directly on the detail payload so the
   // UI survives reload without needing a separate round-trip.
@@ -165,13 +170,16 @@ export interface RequestDetail {
   // Notification tracking
   notified_by_email_at: string | null
   notified_by_email_by_email: string | null
+  notified_by_email_by_display: string | null
   notification_count: number
   last_patient_notification_channel: string
   // Lifecycle marker stamps
   delivered_at: string | null
   delivered_by_email: string | null
+  delivered_by_display: string | null
   archived_at: string | null
   archived_by_email: string | null
+  archived_by_display: string | null
   created_at: string
   updated_at: string
 }

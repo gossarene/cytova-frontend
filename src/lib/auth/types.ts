@@ -15,6 +15,9 @@ export interface AuthUser {
   firstName: string
   lastName: string
   role: TenantRole
+  /** Optional professional title (e.g. "Dr", "Pr"). Surfaces on signed
+   *  reports for biologists / lab admins. Empty string when unset. */
+  title?: string
   /** Whether the user has uploaded a validation signature image. Driven
    *  by ``/users/me/`` and refreshed when it does. ``undefined`` means
    *  the auth store hasn't loaded the field yet (don't treat as false). */

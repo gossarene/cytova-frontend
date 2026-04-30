@@ -298,7 +298,7 @@ export function RequestDetailPage() {
         <PatientSummaryCard
           summary={request.patient_summary}
           notifiedAt={request.notified_by_email_at}
-          notifiedByEmail={request.notified_by_email_by_email}
+          notifiedByEmail={request.notified_by_email_by_display || request.notified_by_email_by_email}
           notificationCount={request.notification_count}
           onView={() => setShowPatientModal(true)}
         />
@@ -333,19 +333,28 @@ export function RequestDetailPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Request #" value={request.public_reference} mono />
-              <Field label="Created by" value={request.created_by_email || '—'} />
+              <Field
+                label="Created by"
+                value={request.created_by_display || request.created_by_email || '—'}
+              />
             </div>
             {request.notes && <Field label="Notes" value={request.notes} />}
             {request.confirmed_at && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Confirmed at" value={formatDateTime(request.confirmed_at)} />
-                <Field label="Confirmed by" value={request.confirmed_by_email || '—'} />
+                <Field
+                  label="Confirmed by"
+                  value={request.confirmed_by_display || request.confirmed_by_email || '—'}
+                />
               </div>
             )}
             {request.cancelled_at && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Cancelled at" value={formatDateTime(request.cancelled_at)} />
-                <Field label="Cancelled by" value={request.cancelled_by_email || '—'} />
+                <Field
+                  label="Cancelled by"
+                  value={request.cancelled_by_display || request.cancelled_by_email || '—'}
+                />
               </div>
             )}
             <div className="text-xs text-muted-foreground">

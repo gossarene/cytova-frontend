@@ -19,9 +19,19 @@ import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/api/types'
 
 const profileSchema = z.object({
+  title: z.string().max(20).optional(),
   first_name: z.string().min(1, 'Required').max(100),
   last_name: z.string().min(1, 'Required').max(100),
 })
+
+/** Roles for which a professional title makes sense on signed reports.
+ *  Other roles don't validate exams, so the field stays hidden. */
+const TITLE_ROLES = ['LAB_ADMIN', 'BIOLOGIST', 'TECHNICIAN'] as const
+
+const TITLE_OPTIONS = [
+  '', 'Mr', 'Mrs', 'Ms', 'Dr', 'Pr', 'Prof',
+  'Biologist', 'Pharmacist', 'Technician',
+]
 
 const passwordSchema = z.object({
   current_password: z.string().min(1, 'Current password is required'),
@@ -51,8 +61,12 @@ export function SettingsPage() {
 
   const profileForm = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
-    values: user ? { first_name: user.firstName, last_name: user.lastName } : undefined,
+    values: user
+      ? { title: user.title ?? '', first_name: user.firstName, last_name: user.lastName }
+      : undefined,
   })
+
+  const showTitle = !!user && (TITLE_ROLES as readonly string[]).includes(user.role)
 
   const passwordForm = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
@@ -61,10 +75,24 @@ export function SettingsPage() {
 
   async function handleProfileSave(data: ProfileForm) {
     setProfileSaving(true)
+    // Title is only forwarded for roles that can wear one — otherwise
+    // the value would be filtered out of the form anyway.
+    const payload: Partial<ProfileForm> = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+    }
+    if (showTitle) payload.title = data.title ?? ''
     try {
-      await api.patch('/users/me/', data)
+      await api.patch('/users/me/', payload)
       useAuthStore.setState((s) => ({
-        user: s.user ? { ...s.user, firstName: data.first_name, lastName: data.last_name } : null,
+        user: s.user
+          ? {
+              ...s.user,
+              firstName: data.first_name,
+              lastName: data.last_name,
+              title: showTitle ? (data.title ?? '') : s.user.title,
+            }
+          : null,
       }))
       toast.success('Profile updated.')
     } catch { toast.error('Failed to update profile.') }
@@ -142,6 +170,25 @@ export function SettingsPage() {
                     <Input id="s-ln" {...profileForm.register('last_name')} />
                   </FormField>
                 </div>
+
+                {showTitle && (
+                  <FormField
+                    label="Professional title"
+                    htmlFor="s-title"
+                    error={profileForm.formState.errors.title?.message}
+                    hint='Surfaces on signed reports (e.g. "Dr René GOSSA").'
+                  >
+                    <select
+                      id="s-title"
+                      {...profileForm.register('title')}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {TITLE_OPTIONS.map((t) => (
+                        <option key={t || 'none'} value={t}>{t || '— None —'}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                )}
                 <div className="flex justify-end">
                   <Button type="submit" disabled={profileSaving}>
                     {profileSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

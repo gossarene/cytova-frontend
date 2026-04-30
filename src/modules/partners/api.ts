@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { SETUP_PROGRESS_QUERY_KEY } from '@/modules/dashboard/api'
 import type { ApiResponse } from '@/lib/api/types'
-import type { PartnerListItem, PartnerDetail, PartnerExamPriceItem } from './types'
+import type {
+  PartnerBrandingUpdate, PartnerListItem, PartnerDetail, PartnerExamPriceItem,
+} from './types'
 
 export function usePartners(params?: { search?: string; organization_type?: string; is_active?: string }) {
   return useQuery({
@@ -45,6 +47,55 @@ export function useUpdatePartner(id: string) {
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       const { data } = await api.patch<ApiResponse<PartnerDetail>>(`/partners/${id}/`, payload)
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['partners', id] })
+      qc.invalidateQueries({ queryKey: ['partners'] })
+    },
+  })
+}
+
+/**
+ * Upload partner-specific report branding (header text + logo file).
+ *
+ * Uses ``multipart/form-data`` so the logo file rides alongside the
+ * text fields in a single request. The ``Content-Type`` header is left
+ * unset for axios to fill in the correct boundary string at send time
+ * — overriding the default ``application/json`` we set on the shared
+ * client. ``transformRequest`` is identity so axios doesn't try to
+ * JSON-encode the FormData.
+ */
+export function useUpdatePartnerBranding(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: PartnerBrandingUpdate) => {
+      const fd = new FormData()
+      const stringFields: (keyof PartnerBrandingUpdate)[] = [
+        'report_header_name', 'report_header_subtitle', 'report_header_address',
+        'report_header_phone', 'report_header_email', 'report_footer_text',
+      ]
+      for (const key of stringFields) {
+        const v = payload[key]
+        if (typeof v === 'string') fd.append(key, v)
+      }
+      if (typeof payload.custom_report_branding_enabled === 'boolean') {
+        fd.append(
+          'custom_report_branding_enabled',
+          payload.custom_report_branding_enabled ? 'true' : 'false',
+        )
+      }
+      if (payload.clear_logo) fd.append('clear_logo', 'true')
+      if (payload.logo_file) fd.append('report_header_logo', payload.logo_file)
+
+      const { data } = await api.post<ApiResponse<PartnerDetail>>(
+        `/partners/${id}/branding/`,
+        fd,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          transformRequest: [(d) => d],
+        },
+      )
       return data.data
     },
     onSuccess: () => {

@@ -210,16 +210,16 @@ function ResultReviewContent({
       {/* Metadata */}
       <Section title="Traceability">
         <div className="grid gap-2 sm:grid-cols-2 text-xs">
-          <MetaRow icon={<User className="h-3 w-3" />} label="Entered by" value={result.entered_by_email} />
+          <MetaRow icon={<User className="h-3 w-3" />} label="Entered by" value={result.entered_by_display || result.entered_by_email} />
           <MetaRow icon={<Clock className="h-3 w-3" />} label="Entered at" value={result.entered_at ? formatDateTime(result.entered_at) : null} />
-          {result.submitted_by_email && (
-            <MetaRow icon={<User className="h-3 w-3" />} label="Submitted by" value={result.submitted_by_email} />
+          {(result.submitted_by_display || result.submitted_by_email) && (
+            <MetaRow icon={<User className="h-3 w-3" />} label="Submitted by" value={result.submitted_by_display || result.submitted_by_email} />
           )}
           {result.submitted_at && (
             <MetaRow icon={<Clock className="h-3 w-3" />} label="Submitted at" value={formatDateTime(result.submitted_at)} />
           )}
-          {result.validated_by_email && (
-            <MetaRow icon={<ShieldCheck className="h-3 w-3 text-blue-600" />} label="Validated by" value={result.validated_by_email} />
+          {(result.validated_by_display || result.validated_by_email) && (
+            <MetaRow icon={<ShieldCheck className="h-3 w-3 text-blue-600" />} label="Validated by" value={result.validated_by_display || result.validated_by_email} />
           )}
           {result.validated_at && (
             <MetaRow icon={<Clock className="h-3 w-3" />} label="Validated at" value={formatDateTime(result.validated_at)} />

@@ -30,7 +30,11 @@ export function useCreateUser() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (p: {
-      email: string; first_name: string; last_name: string; role: TenantRole; password: string
+      email: string; first_name: string; last_name: string; role: TenantRole;
+      password: string;
+      /** Optional professional title (e.g. "Dr", "Pr"). Surfaced on
+       *  signed reports and in audit attribution. */
+      title?: string;
     }) => {
       const { data } = await api.post<ApiResponse<UserDetail>>('/users/', p)
       return data.data

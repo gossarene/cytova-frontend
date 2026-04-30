@@ -64,7 +64,9 @@ export interface InvoiceListItem {
 export interface InvoiceDetail extends InvoiceListItem {
   currency: string
   generated_by_email: string | null
+  generated_by_display: string | null
   confirmed_by_email: string | null
+  confirmed_by_display: string | null
   cancelled_at: string | null
   notes: string
   has_pdf: boolean

@@ -35,6 +35,36 @@ export interface PartnerDetail extends PartnerListItem {
   billing_notes: string
   notes: string
   updated_at: string
+  // -- Optional report branding (per-partner) --
+  custom_report_branding_enabled: boolean
+  report_header_name: string
+  report_header_subtitle: string
+  report_header_address: string
+  report_header_phone: string
+  report_header_email: string
+  /** URL to the uploaded logo (or empty string when none uploaded). */
+  report_header_logo: string
+  report_footer_text: string
+}
+
+/**
+ * Payload accepted by ``useUpdatePartnerBranding``.
+ *
+ * - When ``logo_file`` is a ``File`` it is uploaded; when ``null`` the
+ *   field is omitted (existing logo unchanged).
+ * - Set ``clear_logo: true`` to remove the existing logo without
+ *   uploading a replacement. Mutually exclusive with ``logo_file``.
+ */
+export interface PartnerBrandingUpdate {
+  custom_report_branding_enabled?: boolean
+  report_header_name?: string
+  report_header_subtitle?: string
+  report_header_address?: string
+  report_header_phone?: string
+  report_header_email?: string
+  report_footer_text?: string
+  logo_file?: File | null
+  clear_logo?: boolean
 }
 
 /**

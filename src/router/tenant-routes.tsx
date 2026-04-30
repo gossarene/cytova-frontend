@@ -30,6 +30,9 @@ const PatientDetailPage = lazy(() =>
 const InvoiceListPage = lazy(() =>
   import('@/modules/invoicing/pages/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })),
 )
+const FinancialReportsPage = lazy(() =>
+  import('@/modules/financial_reports/pages/FinancialReportsPage').then((m) => ({ default: m.FinancialReportsPage })),
+)
 const InvoiceCreatePage = lazy(() =>
   import('@/modules/invoicing/pages/InvoiceCreatePage').then((m) => ({ default: m.InvoiceCreatePage })),
 )
@@ -63,6 +66,9 @@ const ResultDetailPage = lazy(() =>
 const StockListPage = lazy(() =>
   import('@/modules/stock/pages/StockListPage').then((m) => ({ default: m.StockListPage })),
 )
+const StockCreatePage = lazy(() =>
+  import('@/modules/stock/pages/StockCreatePage').then((m) => ({ default: m.StockCreatePage })),
+)
 const StockItemDetailPage = lazy(() =>
   import('@/modules/stock/pages/StockItemDetailPage').then((m) => ({ default: m.StockItemDetailPage })),
 )
@@ -72,11 +78,17 @@ const MovementsPage = lazy(() =>
 const SupplierListPage = lazy(() =>
   import('@/modules/suppliers/pages/SupplierListPage').then((m) => ({ default: m.SupplierListPage })),
 )
+const SupplierCreatePage = lazy(() =>
+  import('@/modules/suppliers/pages/SupplierCreatePage').then((m) => ({ default: m.SupplierCreatePage })),
+)
 const SupplierDetailPage = lazy(() =>
   import('@/modules/suppliers/pages/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
 )
 const POListPage = lazy(() =>
   import('@/modules/suppliers/pages/POListPage').then((m) => ({ default: m.POListPage })),
+)
+const POCreatePage = lazy(() =>
+  import('@/modules/suppliers/pages/POCreatePage').then((m) => ({ default: m.POCreatePage })),
 )
 const PODetailPage = lazy(() =>
   import('@/modules/suppliers/pages/PODetailPage').then((m) => ({ default: m.PODetailPage })),
@@ -190,17 +202,25 @@ export const tenantRoutes: RouteObject[] = [
                 ],
               },
 
-              // Stock
+              // Stock — STOCK_NEW + STOCK_MOVEMENTS sit BEFORE STOCK_DETAIL
+              // so React Router doesn't match `new`/`movements` as the
+              // `:id` param and try to fetch a non-existent item.
               {
                 element: <PermissionGuard permission={P.STOCK_VIEW} />,
                 children: [
                   { path: ROUTES.STOCK, element: lazyPage(StockListPage) },
-                  { path: ROUTES.STOCK_DETAIL, element: lazyPage(StockItemDetailPage) },
                   { path: ROUTES.STOCK_MOVEMENTS, element: lazyPage(MovementsPage) },
+                  { path: ROUTES.STOCK_DETAIL, element: lazyPage(StockItemDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionGuard permission={P.STOCK_MANAGE} />,
+                children: [
+                  { path: ROUTES.STOCK_NEW, element: lazyPage(StockCreatePage) },
                 ],
               },
 
-              // Suppliers
+              // Suppliers — SUPPLIER_NEW sits BEFORE SUPPLIER_DETAIL.
               {
                 element: <PermissionGuard permission={P.SUPPLIERS_VIEW} />,
                 children: [
@@ -208,8 +228,14 @@ export const tenantRoutes: RouteObject[] = [
                   { path: ROUTES.SUPPLIER_DETAIL, element: lazyPage(SupplierDetailPage) },
                 ],
               },
+              {
+                element: <PermissionGuard permission={P.SUPPLIERS_MANAGE} />,
+                children: [
+                  { path: ROUTES.SUPPLIER_NEW, element: lazyPage(SupplierCreatePage) },
+                ],
+              },
 
-              // Procurement
+              // Procurement — PROCUREMENT_NEW sits BEFORE PROCUREMENT_DETAIL.
               {
                 element: <PermissionGuard permission={P.PROCUREMENT_VIEW} />,
                 children: [
@@ -217,13 +243,22 @@ export const tenantRoutes: RouteObject[] = [
                   { path: ROUTES.PROCUREMENT_DETAIL, element: lazyPage(PODetailPage) },
                 ],
               },
+              {
+                element: <PermissionGuard permission={P.PROCUREMENT_MANAGE} />,
+                children: [
+                  { path: ROUTES.PROCUREMENT_NEW, element: lazyPage(POCreatePage) },
+                ],
+              },
 
-              // Invoicing
+              // Invoicing + Financial Reports — same BILLING_VIEW gate.
+              // Financial Reports is a read-only simulation surface, separate
+              // from the official invoicing flow (no Invoice records created).
               {
                 element: <PermissionGuard permission={P.BILLING_VIEW} />,
                 children: [
                   { path: ROUTES.INVOICES, element: lazyPage(InvoiceListPage) },
                   { path: ROUTES.INVOICE_DETAIL, element: lazyPage(InvoiceDetailPage) },
+                  { path: ROUTES.FINANCIAL_REPORTS, element: lazyPage(FinancialReportsPage) },
                 ],
               },
               {
