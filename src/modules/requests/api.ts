@@ -331,7 +331,41 @@ export function useGenerateRequestReport(requestId: string) {
   })
 }
 
-export interface ReportVersionListItem {
+/**
+ * Channel through which a result version reached the patient. Mirrors
+ * the backend ``PatientSharedChannel`` enum. Empty string surfaces on
+ * legacy share rows that pre-date the version-tracking migration.
+ */
+export type LabReportSharedChannel = 'CYTOVA' | 'EMAIL' | 'SHARE_LINK' | 'MANUAL'
+
+/**
+ * One patient-portal share event recorded against a specific lab
+ * report version. The dialog renders these as a sub-list under their
+ * parent ``ReportHistoryLabVersion`` so the operator can see "this
+ * version was sent on date X, via channel Y, and is the current
+ * version on the patient's side".
+ *
+ * Server contract: ``patient_account_id`` is the global Cytova account
+ * id — already known to the lab from the share form, so re-exposing
+ * it here doesn't introduce a new identifier surface. Patient PII
+ * (name, email, DOB) is NEVER part of this payload.
+ */
+export interface ReportHistoryShareEvent {
+  shared_result_id: string
+  shared_at: string
+  shared_channel: LabReportSharedChannel | ''
+  /**
+   * Patient-portal lifecycle status: ``ACTIVE`` once shared,
+   * ``HIDDEN_BY_PATIENT`` if the patient hid the row themselves,
+   * ``REVOKED`` if the lab revoked it. Lab can see all three (the
+   * patient-portal view filters HIDDEN/REVOKED out).
+   */
+  share_status: 'ACTIVE' | 'HIDDEN_BY_PATIENT' | 'REVOKED'
+  is_current_for_patient: boolean
+  patient_account_id: string
+}
+
+export interface ReportHistoryLabVersion {
   id: string
   version_number: number
   is_current: boolean
@@ -339,17 +373,45 @@ export interface ReportVersionListItem {
   generated_by_email: string | null
   downloadable: boolean
   pdf_url: string
+  /**
+   * Share events that reference this lab version. Empty when the
+   * version was generated internally but never shared with the
+   * patient — the patient-portal contract requires that lab-only
+   * versions stay invisible client-side.
+   */
+  shared_with_patient: ReportHistoryShareEvent[]
 }
 
-export function useReportVersions(requestId: string, enabled: boolean) {
+export interface ReportHistoryPayload {
+  request_id: string
+  request_number: string
+  request_status: string
+  issued_at: string | null
+  issued_by_email: string | null
+  reopened_at: string | null
+  reopened_by_email: string | null
+  reopen_reason: string
+  lab_versions: ReportHistoryLabVersion[]
+  /**
+   * Pre-Phase-1 share rows whose ``report_version_number`` is null —
+   * they couldn't be bucketed under a specific lab version. The
+   * dialog surfaces them in their own group so they aren't silently
+   * dropped from the operator's view.
+   */
+  unversioned_shares: ReportHistoryShareEvent[]
+  /** Sorted distinct channels used across patient-share events. */
+  channels_used: LabReportSharedChannel[]
+}
+
+export function useReportHistory(requestId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['requests', requestId, 'report', 'versions'],
+    queryKey: ['requests', requestId, 'report-history'],
     enabled,
     queryFn: async () => {
-      const { data } = await api.get<
-        ApiResponse<{ results: ReportVersionListItem[] }>
-      >(`/requests/${requestId}/report/versions/`)
-      return data.data.results
+      const { data } = await api.get<ApiResponse<ReportHistoryPayload>>(
+        `/requests/${requestId}/report-history/`,
+      )
+      return data.data
     },
     staleTime: 30_000,
   })
@@ -413,15 +475,50 @@ export function useCreateAccessToken(requestId: string) {
 export function useRegenerateAccessToken(requestId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (): Promise<AccessTokenState> => {
+    // Same ``force_resend`` contract as ``useNotifyPatientByEmail``:
+    // post-issuance, the backend rejects with 409 unless the flag is
+    // set. The frontend confirms with the user before retrying.
+    mutationFn: async (
+      payload: { force_resend?: boolean } = {},
+    ): Promise<AccessTokenState> => {
       const { data } = await api.post<ApiResponse<AccessTokenState>>(
         `/requests/${requestId}/access-token/regenerate/`,
+        payload,
       )
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({
       queryKey: ['requests', requestId, 'access-token'],
     }),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Reopen result — controlled correction flow (biologist / lab admin)
+// ---------------------------------------------------------------------------
+
+export interface ReopenResultResponse {
+  status: 'VALIDATED'
+  reopened_at: string
+  superseded_report_versions: number
+  message: string
+}
+
+export function useReopenResult(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: { reason: string }): Promise<ReopenResultResponse> => {
+      const { data } = await api.post<ApiResponse<ReopenResultResponse>>(
+        `/requests/${requestId}/reopen-result/`,
+        payload,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+      qc.invalidateQueries({ queryKey: ['requests', 'list'] })
+      qc.invalidateQueries({ queryKey: ['requests', requestId, 'access-token'] })
+    },
   })
 }
 
@@ -475,9 +572,15 @@ export function useArchiveRequest(requestId: string) {
 export function useNotifyPatientByEmail(requestId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (): Promise<NotifyPatientResponse> => {
+    // ``force_resend`` opts past the post-issuance lock — the
+    // backend returns 409 ALREADY_ISSUED otherwise, and the UI
+    // surfaces a confirmation modal that supplies the flag.
+    mutationFn: async (
+      payload: { force_resend?: boolean } = {},
+    ): Promise<NotifyPatientResponse> => {
       const { data } = await api.post<ApiResponse<NotifyPatientResponse>>(
         `/requests/${requestId}/notify-patient/`,
+        payload,
       )
       return data.data
     },
@@ -503,6 +606,112 @@ export function useNotifyPatientByEmail(requestId: string) {
       qc.invalidateQueries({
         queryKey: ['requests', requestId, 'access-token'],
       })
+    },
+  })
+}
+
+
+// ---------------------------------------------------------------------------
+// Notify Cytova — share a result with a global patient portal account
+// ---------------------------------------------------------------------------
+
+export interface NotifyCytovaPayload {
+  cytova_patient_id: string
+  first_name: string
+  last_name: string
+  date_of_birth: string  // YYYY-MM-DD
+  /** Override the one-shot rule. Backend rejects with
+   *  ``CYTOVA_ALREADY_SHARED`` (409) unless this flag is true AND
+   *  the caller has the LAB_ADMIN or BIOLOGIST role. */
+  force_share?: boolean
+}
+
+export interface NotifyCytovaResponse {
+  shared_result_id: string
+  /** Email-notification outcome — best-effort. The share itself
+   *  succeeded either way; FAILED means the lab user should follow
+   *  up with the patient out-of-band. */
+  email_notification: 'SENT' | 'FAILED'
+  message: string
+}
+
+/**
+ * POST /api/v1/requests/{id}/notify-cytova/
+ *
+ * The backend gates on identity: name + DOB must match the global
+ * patient account behind the supplied Cytova ID. On any mismatch the
+ * server returns 400 with a single non-distinguishing error code
+ * (`IDENTITY_VERIFICATION_FAILED`) — the UI surface MUST mirror that
+ * and never tell the lab user which field was wrong.
+ */
+export function useNotifyCytova(requestId: string) {
+  return useMutation({
+    mutationFn: async (payload: NotifyCytovaPayload): Promise<NotifyCytovaResponse> => {
+      const { data } = await api.post<ApiResponse<NotifyCytovaResponse>>(
+        `/requests/${requestId}/notify-cytova/`,
+        payload,
+      )
+      return data.data
+    },
+  })
+}
+
+
+// ---------------------------------------------------------------------------
+// Cytova share lifecycle (status lookup + revoke)
+// ---------------------------------------------------------------------------
+
+export type CytovaShareStatus = 'ACTIVE' | 'HIDDEN_BY_PATIENT' | 'REVOKED'
+
+export interface CytovaShareState {
+  status: CytovaShareStatus | null
+  shared_result_id: string | null
+  /** Snapshot of when the share was created. ``null`` if never shared. */
+  created_at?: string
+  /** Snapshot of when the share was revoked, if it has been. */
+  revoked_at?: string | null
+  /** ``'SENT' | 'FAILED' | null`` — the original notify-time outcome. */
+  email_notification_status?: string | null
+}
+
+export const cytovaShareKey = (requestId: string) =>
+  ['requests', requestId, 'cytova-share'] as const
+
+/**
+ * Lab-side polling lookup that drives the "Shared with Cytova patient"
+ * badge + revoke button on Request Detail. ``status`` is ``null`` for
+ * requests never shared to Cytova.
+ */
+export function useCytovaShareStatus(requestId: string, enabled = true) {
+  return useQuery({
+    queryKey: cytovaShareKey(requestId),
+    queryFn: async (): Promise<CytovaShareState> => {
+      const { data } = await api.get<ApiResponse<CytovaShareState>>(
+        `/requests/${requestId}/cytova-share/`,
+      )
+      return data.data
+    },
+    enabled: enabled && !!requestId,
+    staleTime: 30_000,
+  })
+}
+
+export interface RevokeCytovaShareResponse {
+  revoked_count: number
+  message: string
+}
+
+export function useRevokeCytovaShare(requestId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<RevokeCytovaShareResponse> => {
+      const { data } = await api.post<ApiResponse<RevokeCytovaShareResponse>>(
+        `/requests/${requestId}/revoke-cytova-share/`,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: cytovaShareKey(requestId) })
     },
   })
 }

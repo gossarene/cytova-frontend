@@ -5,11 +5,18 @@ export const ROUTES = {
   ABOUT: '/about',
   CONTACT: '/contact',
   SIGNUP: '/signup',
+  SIGNUP_LAB: '/signup/lab',
+  SIGNUP_PATIENT: '/signup/patient',
 
   // Auth
   LOGIN: '/login',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  // Patient portal authentication
+  LOGIN_PATIENT: '/login/patient',
+  VERIFY_EMAIL: '/verify-email',
+  PATIENT_DASHBOARD: '/patient',
+  PATIENT_RESULTS: '/patient/results',
 
   // Tenant App
   DASHBOARD: '/dashboard',

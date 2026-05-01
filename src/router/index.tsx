@@ -4,6 +4,7 @@ import { RouteError } from '@/components/shared/RouteError'
 import { publicRoutes } from './public-routes'
 import { authRoutes } from './auth-routes'
 import { tenantRoutes } from './tenant-routes'
+import { patientRoutes } from './patient-routes'
 import { platformRoutes } from './platform-routes'
 import { errorRoutes } from './error-routes'
 
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       ...publicRoutes,
       ...authRoutes,
       ...tenantRoutes,
+      ...patientRoutes,
       ...platformRoutes,
       ...errorRoutes,
     ],

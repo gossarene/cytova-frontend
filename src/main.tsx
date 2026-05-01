@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { hydrateAuth } from '@/lib/auth/store'
 import { hydratePlatformAuth } from '@/lib/auth/platform-store'
+import { hydratePatientAuth } from '@/lib/auth/patient-store'
 import { App } from './App'
 import 'flag-icons/css/flag-icons.min.css'
 import './index.css'
@@ -9,6 +10,7 @@ import './index.css'
 // Hydrate auth state from localStorage before first render
 hydrateAuth()
 hydratePlatformAuth()
+hydratePatientAuth()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

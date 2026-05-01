@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
   ClipboardCheck, Copy, Check, Mail, Phone, User, Archive,
-  PackageCheck, ExternalLink,
+  PackageCheck, ExternalLink, Share2, ShieldOff,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,8 @@ import {
   useMarkItemCollected, useFinalizeValidation, useRequestLabels,
   useAccessTokenState, useCreateAccessToken, useNotifyPatientByEmail,
   useMarkRequestDelivered, useArchiveRequest,
+  useCytovaShareStatus, useRevokeCytovaShare,
+  useReopenResult,
 } from '../api'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -36,6 +38,7 @@ import { RequestLabelsCard } from '../components/RequestLabelsCard'
 import { RequestReportCard } from '../components/RequestReportCard'
 import { ResultEntryDialog } from '../components/ResultEntryDialog'
 import { ResultReviewModal } from '../components/ResultReviewModal'
+import { NotifyCytovaDialog } from '../components/NotifyCytovaDialog'
 import type { RequestItemBrief } from '../types'
 import { PRICE_SOURCE_LABELS } from '../types'
 import type { ResultDetail } from '@/modules/results/types'
@@ -87,6 +90,17 @@ export function RequestDetailPage() {
   const [showResendConfirm, setShowResendConfirm] = useState(false)
   const [showMarkDelivered, setShowMarkDelivered] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
+  const [showNotifyCytova, setShowNotifyCytova] = useState(false)
+  const [showRevokeCytova, setShowRevokeCytova] = useState(false)
+  const [showReopen, setShowReopen] = useState(false)
+  const [reopenReason, setReopenReason] = useState('')
+  const reopenMut = useReopenResult(id!)
+  // Lab-side polling lookup that drives the "Shared with Cytova
+  // patient" badge + revoke button. Disabled until we know the
+  // request has a report (no report → no share possible).
+  const cytovaShareQuery = useCytovaShareStatus(id!, true)
+  const cytovaShareStatus = cytovaShareQuery.data?.status ?? null
+  const revokeCytovaMut = useRevokeCytovaShare(id!)
   const role = useRole()
   const canCollect = !!role && COLLECTION_ROLES.has(role)
   const canFinalize = usePermission(P.REQUESTS_FINALIZE)
@@ -141,10 +155,10 @@ export function RequestDetailPage() {
     }
   }
 
-  async function doSendNotification() {
+  async function doSendNotification(opts: { force_resend?: boolean } = {}) {
     setShowResendConfirm(false)
     try {
-      const res = await notifyByEmailMut.mutateAsync()
+      const res = await notifyByEmailMut.mutateAsync(opts)
       if (res.channels_succeeded.includes('EMAIL')) {
         toast.success('Email notification sent')
       } else {
@@ -199,12 +213,37 @@ export function RequestDetailPage() {
     }
   }
 
+  const isIssued = request.status === 'RESULT_ISSUED'
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={`Request ${request.public_reference}`}
         breadcrumbs={[{ label: 'Requests', href: ROUTES.REQUESTS }, { label: request.public_reference }]}
       >
+        {isIssued && (
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700"
+          >
+            <Check className="h-3 w-3" />
+            Issued
+          </Badge>
+        )}
+        {/* Reopen result — only visible after issuance, restricted to
+            biologists + lab admins on the backend. We use the
+            FINALIZE permission as the closest UI proxy (same role
+            set); the backend's own ``IsBiologistOrAbove`` enforces. */}
+        {isIssued && (
+          <Can permission={P.REQUESTS_FINALIZE}>
+            <Button
+              variant="outline" className="gap-2"
+              onClick={() => setShowReopen(true)}
+            >
+              <Pencil className="h-4 w-4" /> Reopen result
+            </Button>
+          </Can>
+        )}
         {isDraft && (
           <>
             <Can permission={P.REQUESTS_CONFIRM}>
@@ -245,9 +284,15 @@ export function RequestDetailPage() {
               setTimeout(() => setLinkCopied(false), 2000)
             }}
             onNotifyByEmail={() => {
-              // First click after a previous successful notification → require
-              // explicit confirmation. Otherwise send immediately.
-              if (request.notification_count > 0) {
+              // Resend confirmation kicks in either when a previous
+              // notification has gone out OR when the result has been
+              // formally issued (the backend rejects un-flagged
+              // resends with 409 ALREADY_ISSUED). Otherwise send
+              // immediately.
+              if (
+                request.notification_count > 0
+                || request.status === 'RESULT_ISSUED'
+              ) {
                 setShowResendConfirm(true)
               } else {
                 void doSendNotification()
@@ -255,6 +300,44 @@ export function RequestDetailPage() {
             }}
             sendingEmail={notifyByEmailMut.isPending}
           />
+        )}
+        {/* Notify Cytova — visible only when a report PDF exists. The
+            backend gate is technician-or-above; we don't have a UI
+            permission constant for this yet, so the visibility is
+            driven by the request state rather than role. The endpoint
+            still enforces the role check on submission.
+
+            Once an ACTIVE share exists, the secondary action morphs
+            into "Revoke Cytova share" (gated server-side at
+            receptionist/lab-admin). A small badge nearby tells the
+            lab user the share status at a glance. */}
+        {request.has_report && (
+          <>
+            {cytovaShareStatus === 'ACTIVE' ? (
+              <>
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700"
+                >
+                  <Check className="h-3 w-3" />
+                  Shared with Cytova patient
+                </Badge>
+                <Button
+                  variant="outline" className="gap-2"
+                  onClick={() => setShowRevokeCytova(true)}
+                >
+                  <ShieldOff className="h-4 w-4" /> Revoke Cytova share
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline" className="gap-2"
+                onClick={() => setShowNotifyCytova(true)}
+              >
+                <Share2 className="h-4 w-4" /> Notify Cytova
+              </Button>
+            )}
+          </>
         )}
         {/* Mark as delivered — visible only when closure is OPEN, the
             workflow is past validation, AND the report PDF has been
@@ -507,9 +590,18 @@ export function RequestDetailPage() {
         confirmLabel="Finalize Validation" onConfirm={handleFinalize} isLoading={finalizeMut.isPending}
       />
       <ConfirmDialog open={showResendConfirm} onOpenChange={setShowResendConfirm}
-        title="Send another email notification?"
-        description="This patient has already been notified by email. Send another notification?"
-        confirmLabel="Send again" onConfirm={() => void doSendNotification()}
+        title={
+          request.status === 'RESULT_ISSUED'
+            ? 'Send this result again?'
+            : 'Send another email notification?'
+        }
+        description={
+          request.status === 'RESULT_ISSUED'
+            ? 'This result has already been issued. Do you want to send it again?'
+            : 'This patient has already been notified by email. Send another notification?'
+        }
+        confirmLabel="Send again"
+        onConfirm={() => void doSendNotification({ force_resend: true })}
         isLoading={notifyByEmailMut.isPending}
       />
       <ConfirmDialog open={showMarkDelivered} onOpenChange={setShowMarkDelivered}
@@ -531,6 +623,100 @@ export function RequestDetailPage() {
           onClose={() => setShowPatientModal(false)}
         />
       )}
+
+      <NotifyCytovaDialog
+        open={showNotifyCytova}
+        onOpenChange={setShowNotifyCytova}
+        requestId={request.id}
+      />
+
+      <ConfirmDialog
+        open={showRevokeCytova}
+        onOpenChange={setShowRevokeCytova}
+        title="Revoke Cytova sharing?"
+        description="The patient will no longer be able to access this result from their Cytova space. The laboratory record will remain unchanged."
+        confirmLabel="Revoke share"
+        variant="destructive"
+        onConfirm={async () => {
+          try {
+            await revokeCytovaMut.mutateAsync()
+            toast.success('Cytova sharing revoked')
+            setShowRevokeCytova(false)
+          } catch {
+            toast.error('Could not revoke the share. Please try again.')
+          }
+        }}
+        isLoading={revokeCytovaMut.isPending}
+      />
+
+      <Dialog
+        open={showReopen}
+        onOpenChange={(open) => {
+          setShowReopen(open)
+          if (!open) setReopenReason('')
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reopen result</DialogTitle>
+            <p className="mt-2 text-sm text-muted-foreground">
+              The current report version will be marked as superseded.
+              Generate a new report after applying the correction. The
+              patient will see only the latest version once it is
+              re-issued.
+            </p>
+          </DialogHeader>
+          <div className="space-y-2 px-1">
+            <label
+              htmlFor="reopen-reason"
+              className="text-sm font-medium text-foreground"
+            >
+              Reason for reopening <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              id="reopen-reason"
+              className="w-full min-h-[100px] rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="e.g. Wrong reference range applied — corrected after re-review."
+              maxLength={2000}
+            />
+            <p className="text-xs text-muted-foreground">
+              This reason is recorded in the audit log and helps the
+              regulator understand why the issued result needed
+              correction.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button" variant="outline"
+              onClick={() => setShowReopen(false)}
+              disabled={reopenMut.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button" variant="destructive"
+              disabled={reopenMut.isPending || reopenReason.trim().length < 3}
+              onClick={async () => {
+                try {
+                  await reopenMut.mutateAsync({ reason: reopenReason.trim() })
+                  toast.success('Result reopened — generate the new report when ready.')
+                  setShowReopen(false)
+                  setReopenReason('')
+                } catch {
+                  toast.error('Could not reopen the result.')
+                }
+              }}
+            >
+              {reopenMut.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Reopen result
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

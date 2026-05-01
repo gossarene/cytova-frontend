@@ -1,4 +1,13 @@
-export type RequestStatus = 'DRAFT' | 'CONFIRMED' | 'COLLECTION_IN_PROGRESS' | 'IN_ANALYSIS' | 'AWAITING_REVIEW' | 'RETEST_REQUIRED' | 'READY_FOR_RELEASE' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type RequestStatus =
+  | 'DRAFT' | 'CONFIRMED' | 'COLLECTION_IN_PROGRESS' | 'IN_ANALYSIS'
+  | 'AWAITING_REVIEW' | 'RETEST_REQUIRED' | 'READY_FOR_RELEASE'
+  | 'VALIDATED'
+  // Locked finality state — set on the first patient-facing
+  // notification (email / share link / Cytova). Result + report
+  // are immutable while in this state; resends require explicit
+  // ``force_resend``, corrections require the ``reopen-result`` flow.
+  | 'RESULT_ISSUED'
+  | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 /** Post-processing closure state, orthogonal to workflow ``status``. */
 export type ClosureStatus = 'OPEN' | 'DELIVERED' | 'ARCHIVED'

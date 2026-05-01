@@ -42,10 +42,25 @@ function getTenantApiBaseUrl(): string {
 const platformBase = import.meta.env.VITE_PLATFORM_API_BASE_URL
 const defaultOnboardingBase = platformBase ? `${platformBase}/onboarding` : '/api/v1/platform/onboarding'
 
+// Patient portal lives at /api/v1/patient-portal/ — same host as the
+// platform API but NOT under the /platform/ prefix (the patient surface
+// is global, not platform-admin scoped). Strip a trailing /platform
+// from the configured base if present so a single
+// VITE_PLATFORM_API_BASE_URL feeds both clients.
+function buildPatientPortalBase(): string {
+  const explicit = import.meta.env.VITE_PATIENT_PORTAL_API_BASE_URL
+  if (explicit) return explicit
+  if (platformBase) {
+    return platformBase.replace(/\/platform\/?$/, '') + '/patient-portal'
+  }
+  return '/api/v1/patient-portal'
+}
+
 export const env = {
   apiBaseUrl: getTenantApiBaseUrl(),
   platformApiBaseUrl: platformBase,
   onboardingApiBaseUrl: import.meta.env.VITE_ONBOARDING_API_BASE_URL || defaultOnboardingBase,
+  patientPortalApiBaseUrl: buildPatientPortalBase(),
   appName: import.meta.env.VITE_APP_NAME || 'Cytova',
   domain: import.meta.env.VITE_DOMAIN || 'cytova.io',
 } as const
