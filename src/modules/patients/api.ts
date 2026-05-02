@@ -156,3 +156,78 @@ export function useDeletePortalAccount(patientId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['patients', patientId] }),
   })
 }
+
+
+// ---------------------------------------------------------------------------
+// Cytova patient-identity link
+// ---------------------------------------------------------------------------
+
+/**
+ * Input shape for ``POST /patients/{id}/link-cytova-identity/``.
+ *
+ * The form prefills ``first_name`` / ``last_name`` / ``date_of_birth``
+ * from the local patient record so the operator only re-types the
+ * Cytova ID. Backend re-runs the full identity check against the
+ * global ``PatientAccount`` — local prefill is convenience only,
+ * not a security trust boundary.
+ */
+export interface LinkCytovaIdentityRequest {
+  cytova_patient_id: string
+  first_name: string
+  last_name: string
+  date_of_birth: string
+}
+
+/**
+ * Link the local patient to a global Cytova identity. On success the
+ * detail payload comes back with ``has_cytova_identity=true`` + the
+ * snapshot fields populated; the cache invalidation flips every
+ * dependent badge across the app (Cytova card, Notify Cytova action
+ * in the Phase F drawer).
+ *
+ * Failure surface (backend codes the UI maps):
+ *   - 400 ``IDENTITY_VERIFICATION_FAILED`` — generic mismatch. The
+ *     dialog surfaces a non-distinguishing error so the lab user
+ *     never learns which field was wrong (no enumeration oracle
+ *     against global patient identity).
+ *   - 409 ``ALREADY_LINKED`` — operator must unlink first. Should
+ *     not normally fire from the UI: the link CTA is hidden when
+ *     ``has_cytova_identity=true``. Defensive branch only.
+ */
+export function useLinkCytovaIdentity(patientId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: LinkCytovaIdentityRequest): Promise<PatientDetail> => {
+      const { data } = await api.post<ApiResponse<PatientDetail>>(
+        `/patients/${patientId}/link-cytova-identity/`,
+        payload,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['patients', patientId] })
+      qc.invalidateQueries({ queryKey: ['patients'] })
+    },
+  })
+}
+
+/**
+ * Clear the Cytova identity link snapshot. Idempotent on the backend
+ * (no-op on already-unlinked patients) so the UI can fire-and-forget
+ * without tracking local state.
+ */
+export function useUnlinkCytovaIdentity(patientId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<PatientDetail> => {
+      const { data } = await api.post<ApiResponse<PatientDetail>>(
+        `/patients/${patientId}/unlink-cytova-identity/`,
+      )
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['patients', patientId] })
+      qc.invalidateQueries({ queryKey: ['patients'] })
+    },
+  })
+}

@@ -74,6 +74,10 @@ export interface LabSettings {
   notification_enable_whatsapp_share: boolean
   notification_enable_email: boolean
   notification_enable_sms: boolean
+  /** Phase D: gates the Cytova patient-portal sharing channel.
+   *  When false, the Notify-Cytova endpoint refuses with
+   *  CYTOVA_CHANNEL_DISABLED and the lab UI hides the channel. */
+  notification_enable_cytova: boolean
 
   // Billing
   financial_document_mode: 'INVOICE_ONLY' | 'STATEMENT_ONLY' | 'BOTH'

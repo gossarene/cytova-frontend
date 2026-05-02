@@ -21,6 +21,7 @@ import { usePermission } from '@/lib/permissions/hooks'
 import { P } from '@/lib/permissions/constants'
 import { PatientForm, type PatientFormData } from '../components/PatientForm'
 import { PortalAccountCard } from '../components/PortalAccountCard'
+import { CytovaIdentityCard } from '../components/CytovaIdentityCard'
 import {
   usePatient, useUpdatePatient, useDeactivatePatient,
   usePatientRequests, usePatientRequestStats,
@@ -202,6 +203,14 @@ export function PatientDetailPage() {
                 patientEmail={patient.email}
                 portalAccount={patient.portal_account}
               />
+              {/* Cytova identity link (Phase E) — paired with the
+                  legacy PortalAccountCard. The two cards cover
+                  different concerns: PortalAccountCard owns the
+                  in-tenant local portal account; CytovaIdentityCard
+                  owns the link to a global Cytova account. The
+                  Cytova link is what Notify Cytova reuses (Phase F)
+                  so the receptionist verifies identity once. */}
+              <CytovaIdentityCard patient={patient} />
             </div>
           </div>
 

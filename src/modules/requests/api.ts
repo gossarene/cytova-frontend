@@ -615,11 +615,28 @@ export function useNotifyPatientByEmail(requestId: string) {
 // Notify Cytova — share a result with a global patient portal account
 // ---------------------------------------------------------------------------
 
+/**
+ * Payload for ``POST /requests/{id}/notify-cytova/``.
+ *
+ * Two valid call shapes after Phase D:
+ *
+ * 1. **Linked-patient call (the Phase F default)** — empty body
+ *    (or only ``force_share``). The backend reuses the verified
+ *    Cytova link snapshot on the patient and re-checks the global
+ *    account is still active.
+ * 2. **Explicit-identity call (back-compat)** — all four identity
+ *    fields supplied. Kept for unlinked patients and for any
+ *    external caller still on the pre-Phase-D contract.
+ *
+ * Type is fully optional so the drawer's linked-path CTA can submit
+ * ``{}`` or ``{ force_share: true }``; the explicit-identity dialog
+ * (still mounted in the codebase as fallback) supplies all four.
+ */
 export interface NotifyCytovaPayload {
-  cytova_patient_id: string
-  first_name: string
-  last_name: string
-  date_of_birth: string  // YYYY-MM-DD
+  cytova_patient_id?: string
+  first_name?: string
+  last_name?: string
+  date_of_birth?: string  // YYYY-MM-DD
   /** Override the one-shot rule. Backend rejects with
    *  ``CYTOVA_ALREADY_SHARED`` (409) unless this flag is true AND
    *  the caller has the LAB_ADMIN or BIOLOGIST role. */
@@ -643,15 +660,27 @@ export interface NotifyCytovaResponse {
  * server returns 400 with a single non-distinguishing error code
  * (`IDENTITY_VERIFICATION_FAILED`) — the UI surface MUST mirror that
  * and never tell the lab user which field was wrong.
+ *
+ * On success this hook invalidates the request detail and the
+ * cytova-share lookup so the "Shared with Cytova" badge + the
+ * drawer's Cytova section flip to the active state without an
+ * extra refetch round-trip.
  */
 export function useNotifyCytova(requestId: string) {
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: NotifyCytovaPayload): Promise<NotifyCytovaResponse> => {
+    mutationFn: async (
+      payload: NotifyCytovaPayload = {},
+    ): Promise<NotifyCytovaResponse> => {
       const { data } = await api.post<ApiResponse<NotifyCytovaResponse>>(
         `/requests/${requestId}/notify-cytova/`,
         payload,
       )
       return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', requestId] })
+      qc.invalidateQueries({ queryKey: ['requests', requestId, 'cytova-share'] })
     },
   })
 }

@@ -57,6 +57,22 @@ export interface PatientDetail {
   created_by: { id: string; email: string } | null
   created_at: string
   updated_at: string
+  // ---- Cytova patient-identity link (Phase C exposure) ----------
+  // Read-only summary of the lab → global Cytova link, scoped to
+  // what the lab UI legitimately needs to render the linked-state
+  // badge + recovery actions. Mirrors the backend serializer's
+  // field-level rationale in apps/patients/serializers.py.
+  //
+  // The backend deliberately does NOT expose:
+  //   - cytova_patient_account_id  (internal cross-schema snapshot)
+  //   - any field from the global PatientAccount (email/name/DOB)
+  // — so this type doesn't carry them either. The link is a
+  // *snapshot*, not a join.
+  has_cytova_identity: boolean
+  cytova_patient_id: string
+  cytova_identity_verified_at: string | null
+  cytova_identity_verified_by_display: string | null
+  cytova_identity_unlinked_at: string | null
 }
 
 export interface PortalAccount {

@@ -4,8 +4,8 @@ import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Building2, FileText,
   Loader2, Pipette, FlaskConical, Send, Pencil,
-  ClipboardCheck, Copy, Check, Mail, Phone, User, Archive,
-  PackageCheck, ExternalLink, Share2, ShieldOff,
+  ClipboardCheck, Check, Mail, Phone, User, Archive,
+  PackageCheck, ExternalLink,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,20 +25,17 @@ import { useRole, usePermission } from '@/lib/permissions/hooks'
 import {
   useRequest, useConfirmRequest, useCancelRequest,
   useMarkItemCollected, useFinalizeValidation, useRequestLabels,
-  useAccessTokenState, useCreateAccessToken, useNotifyPatientByEmail,
-  useMarkRequestDelivered, useArchiveRequest,
-  useCytovaShareStatus, useRevokeCytovaShare,
-  useReopenResult,
+  useMarkRequestDelivered, useArchiveRequest, useReopenResult,
 } from '../api'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useItemCurrentResult, useSubmitResult } from '@/modules/results/api'
-import { useLabSettings } from '@/modules/lab_settings/api'
 import { RequestLabelsCard } from '../components/RequestLabelsCard'
 import { RequestReportCard } from '../components/RequestReportCard'
 import { ResultEntryDialog } from '../components/ResultEntryDialog'
 import { ResultReviewModal } from '../components/ResultReviewModal'
-import { NotifyCytovaDialog } from '../components/NotifyCytovaDialog'
+import { PatientDeliveryStatusBadge } from '../components/PatientDeliveryStatusBadge'
+import { PatientDeliveryDrawer } from '../components/PatientDeliveryDrawer'
 import type { RequestItemBrief } from '../types'
 import { PRICE_SOURCE_LABELS } from '../types'
 import type { ResultDetail } from '@/modules/results/types'
@@ -79,28 +76,18 @@ export function RequestDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [showFinalize, setShowFinalize] = useState(false)
-  const { data: tokenState } = useAccessTokenState(id!)
-  const createTokenMut = useCreateAccessToken(id!)
-  const notifyByEmailMut = useNotifyPatientByEmail(id!)
   const markDeliveredMut = useMarkRequestDelivered(id!)
   const archiveMut = useArchiveRequest(id!)
-  const { data: labSettings } = useLabSettings()
-  const [linkCopied, setLinkCopied] = useState(false)
   const [showPatientModal, setShowPatientModal] = useState(false)
-  const [showResendConfirm, setShowResendConfirm] = useState(false)
   const [showMarkDelivered, setShowMarkDelivered] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
-  const [showNotifyCytova, setShowNotifyCytova] = useState(false)
-  const [showRevokeCytova, setShowRevokeCytova] = useState(false)
   const [showReopen, setShowReopen] = useState(false)
   const [reopenReason, setReopenReason] = useState('')
   const reopenMut = useReopenResult(id!)
-  // Lab-side polling lookup that drives the "Shared with Cytova
-  // patient" badge + revoke button. Disabled until we know the
-  // request has a report (no report → no share possible).
-  const cytovaShareQuery = useCytovaShareStatus(id!, true)
-  const cytovaShareStatus = cytovaShareQuery.data?.status ?? null
-  const revokeCytovaMut = useRevokeCytovaShare(id!)
+  // Patient-delivery drawer: every notification / share action lives
+  // inside ``<PatientDeliveryDrawer>`` now. The page only owns the
+  // open/close flag so the "Manage delivery" CTA can wire up.
+  const [deliveryOpen, setDeliveryOpen] = useState(false)
   const role = useRole()
   const canCollect = !!role && COLLECTION_ROLES.has(role)
   const canFinalize = usePermission(P.REQUESTS_FINALIZE)
@@ -155,35 +142,6 @@ export function RequestDetailPage() {
     }
   }
 
-  async function doSendNotification(opts: { force_resend?: boolean } = {}) {
-    setShowResendConfirm(false)
-    try {
-      const res = await notifyByEmailMut.mutateAsync(opts)
-      if (res.channels_succeeded.includes('EMAIL')) {
-        toast.success('Email notification sent')
-      } else {
-        const failed = res.channels_failed.find((c) => c.channel === 'EMAIL')
-        toast.error(
-          failed?.error
-            ? `Email could not be delivered (${failed.error}).`
-            : 'Email could not be delivered.',
-        )
-      }
-    } catch (err: unknown) {
-      const apiErr = err as {
-        response?: { data?: { errors?: { code?: string; message?: string }[] } }
-      }
-      const first = apiErr.response?.data?.errors?.[0]
-      if (first?.code === 'PATIENT_EMAIL_MISSING') {
-        toast.error('Patient email is required to send an email notification.')
-      } else if (first?.code === 'EMAIL_CHANNEL_DISABLED') {
-        toast.error('Email notifications are disabled in lab settings.')
-      } else {
-        toast.error(first?.message || 'Failed to send email notification.')
-      }
-    }
-  }
-
   async function handleMarkDelivered() {
     try {
       await markDeliveredMut.mutateAsync()
@@ -230,6 +188,15 @@ export function RequestDetailPage() {
             Issued
           </Badge>
         )}
+        {/* Channel-state badge — complements the lifecycle "Issued"
+            badge above. Shows things like "Shared with Cytova",
+            "Email sent", "Secure link active". Hidden until a report
+            exists. */}
+        <PatientDeliveryStatusBadge
+          requestId={request.id}
+          hasReport={request.has_report}
+          notificationCount={request.notification_count}
+        />
         {/* Reopen result — only visible after issuance, restricted to
             biologists + lab admins on the backend. We use the
             FINALIZE permission as the closest UI proxy (same role
@@ -263,81 +230,19 @@ export function RequestDetailPage() {
             <ClipboardCheck className="h-4 w-4" /> Finalize Validation
           </Button>
         )}
-        {request.has_report && tokenState && (
-          <SecureLinkActions
-            tokenState={tokenState}
-            onGenerate={async () => {
-              try {
-                await createTokenMut.mutateAsync()
-                toast.success('Secure link generated.')
-              } catch { toast.error('Failed to generate link.') }
-            }}
-            generating={createTokenMut.isPending}
-            linkCopied={linkCopied}
-            whatsappEnabled={labSettings?.notification_enable_whatsapp_share ?? false}
-            emailEnabled={labSettings?.notification_enable_email ?? false}
-            patientHasEmail={!!request.patient_email}
-            onCopy={(url) => {
-              navigator.clipboard.writeText(url)
-              setLinkCopied(true)
-              toast.success('Link copied to clipboard.')
-              setTimeout(() => setLinkCopied(false), 2000)
-            }}
-            onNotifyByEmail={() => {
-              // Resend confirmation kicks in either when a previous
-              // notification has gone out OR when the result has been
-              // formally issued (the backend rejects un-flagged
-              // resends with 409 ALREADY_ISSUED). Otherwise send
-              // immediately.
-              if (
-                request.notification_count > 0
-                || request.status === 'RESULT_ISSUED'
-              ) {
-                setShowResendConfirm(true)
-              } else {
-                void doSendNotification()
-              }
-            }}
-            sendingEmail={notifyByEmailMut.isPending}
-          />
-        )}
-        {/* Notify Cytova — visible only when a report PDF exists. The
-            backend gate is technician-or-above; we don't have a UI
-            permission constant for this yet, so the visibility is
-            driven by the request state rather than role. The endpoint
-            still enforces the role check on submission.
-
-            Once an ACTIVE share exists, the secondary action morphs
-            into "Revoke Cytova share" (gated server-side at
-            receptionist/lab-admin). A small badge nearby tells the
-            lab user the share status at a glance. */}
+        {/* Manage delivery — opens the ``<PatientDeliveryDrawer>`` for
+            every patient notification / share action (secure link,
+            WhatsApp, email, Notify Cytova, revoke share). Visible
+            whenever a report exists; the drawer itself enforces the
+            per-channel rules (lab settings toggles, force_resend on
+            issued requests, role-based gates server-side). */}
         {request.has_report && (
-          <>
-            {cytovaShareStatus === 'ACTIVE' ? (
-              <>
-                <Badge
-                  variant="outline"
-                  className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700"
-                >
-                  <Check className="h-3 w-3" />
-                  Shared with Cytova patient
-                </Badge>
-                <Button
-                  variant="outline" className="gap-2"
-                  onClick={() => setShowRevokeCytova(true)}
-                >
-                  <ShieldOff className="h-4 w-4" /> Revoke Cytova share
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="outline" className="gap-2"
-                onClick={() => setShowNotifyCytova(true)}
-              >
-                <Share2 className="h-4 w-4" /> Notify Cytova
-              </Button>
-            )}
-          </>
+          <Button
+            variant="outline" className="gap-2"
+            onClick={() => setDeliveryOpen(true)}
+          >
+            <Send className="h-4 w-4" /> Manage delivery
+          </Button>
         )}
         {/* Mark as delivered — visible only when closure is OPEN, the
             workflow is past validation, AND the report PDF has been
@@ -589,21 +494,6 @@ export function RequestDetailPage() {
         description={`This will finalize validation for request ${request.public_reference}. After finalization, item-level review modifications will no longer be possible.`}
         confirmLabel="Finalize Validation" onConfirm={handleFinalize} isLoading={finalizeMut.isPending}
       />
-      <ConfirmDialog open={showResendConfirm} onOpenChange={setShowResendConfirm}
-        title={
-          request.status === 'RESULT_ISSUED'
-            ? 'Send this result again?'
-            : 'Send another email notification?'
-        }
-        description={
-          request.status === 'RESULT_ISSUED'
-            ? 'This result has already been issued. Do you want to send it again?'
-            : 'This patient has already been notified by email. Send another notification?'
-        }
-        confirmLabel="Send again"
-        onConfirm={() => void doSendNotification({ force_resend: true })}
-        isLoading={notifyByEmailMut.isPending}
-      />
       <ConfirmDialog open={showMarkDelivered} onOpenChange={setShowMarkDelivered}
         title="Mark request as delivered"
         description={`This will mark request ${request.public_reference} as delivered and remove it from the default active list. You can still find it via the Delivered filter.`}
@@ -624,29 +514,22 @@ export function RequestDetailPage() {
         />
       )}
 
-      <NotifyCytovaDialog
-        open={showNotifyCytova}
-        onOpenChange={setShowNotifyCytova}
+      <PatientDeliveryDrawer
+        open={deliveryOpen}
+        onOpenChange={setDeliveryOpen}
         requestId={request.id}
-      />
-
-      <ConfirmDialog
-        open={showRevokeCytova}
-        onOpenChange={setShowRevokeCytova}
-        title="Revoke Cytova sharing?"
-        description="The patient will no longer be able to access this result from their Cytova space. The laboratory record will remain unchanged."
-        confirmLabel="Revoke share"
-        variant="destructive"
-        onConfirm={async () => {
-          try {
-            await revokeCytovaMut.mutateAsync()
-            toast.success('Cytova sharing revoked')
-            setShowRevokeCytova(false)
-          } catch {
-            toast.error('Could not revoke the share. Please try again.')
-          }
-        }}
-        isLoading={revokeCytovaMut.isPending}
+        requestStatus={request.status}
+        hasReport={request.has_report}
+        patientHasEmail={!!request.patient_email}
+        notificationCount={request.notification_count}
+        patientHasCytovaIdentity={
+          request.patient_summary?.has_cytova_identity ?? false
+        }
+        patientDetailHref={
+          request.patient_summary
+            ? ROUTES.PATIENT_DETAIL.replace(':id', request.patient_summary.id)
+            : undefined
+        }
       />
 
       <Dialog
@@ -949,118 +832,6 @@ function CompactResultCell({
 
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className={`mt-0.5 text-sm ${mono ? 'font-mono' : ''}`}>{value}</p></div>
-}
-
-
-import type { AccessTokenState } from '../api'
-
-function SecureLinkActions({
-  tokenState, onGenerate, generating, linkCopied, onCopy, whatsappEnabled,
-  emailEnabled, patientHasEmail, onNotifyByEmail, sendingEmail,
-}: {
-  tokenState: AccessTokenState
-  onGenerate: () => void
-  generating: boolean
-  linkCopied: boolean
-  onCopy: (url: string) => void
-  whatsappEnabled: boolean
-  emailEnabled: boolean
-  patientHasEmail: boolean
-  onNotifyByEmail: () => void
-  sendingEmail: boolean
-}) {
-  // Renders the "Notify by email" button. Visible whenever the email
-  // channel is enabled in lab settings and the report exists (the parent
-  // gates on ``request.has_report``). Disabled with a tooltip when the
-  // patient has no email — the backend would still reject this with a
-  // clear error, but pre-disabling avoids a wasted round-trip.
-  //
-  // Available in BOTH the "active link" and "no link yet" branches: the
-  // backend's notify-patient endpoint creates-or-reuses the secure link
-  // automatically, so the operator never needs to click "Generate Secure
-  // Link" first just to send an email.
-  const emailButton = emailEnabled ? (
-    patientHasEmail ? (
-      <Button
-        variant="outline" className="gap-2"
-        onClick={onNotifyByEmail}
-        disabled={sendingEmail}
-      >
-        {sendingEmail
-          ? <Loader2 className="h-4 w-4 animate-spin" />
-          : <Mail className="h-4 w-4" />}
-        Notify by email
-      </Button>
-    ) : (
-      // Disabled-with-hint variant. We use the native ``title`` attribute
-      // rather than a Tooltip wrapper because the project uses Base UI
-      // tooltips (not Radix) — Base UI's TooltipTrigger does not honour
-      // ``asChild`` and ends up rendering its own <button> around our
-      // <button>, producing nested-button warnings. ``title`` gives the
-      // same hint with zero composition risk.
-      <Button
-        variant="outline"
-        className="gap-2"
-        disabled
-        title="Patient has no email on file."
-      >
-        <Mail className="h-4 w-4" />
-        Notify by email
-      </Button>
-    )
-  ) : null
-
-  if (tokenState.status === 'active' && tokenState.access_url) {
-    const whatsappMsg = encodeURIComponent(
-      `Your lab result is ready.\n\nAccess it securely here:\n${tokenState.access_url}`,
-    )
-    return (
-      <>
-        <Button
-          variant="outline" className="gap-2"
-          onClick={() => onCopy(tokenState.access_url!)}
-        >
-          {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {linkCopied ? 'Copied' : 'Copy Link'}
-        </Button>
-        {emailButton}
-        {whatsappEnabled && (
-          <Button
-            variant="outline" className="gap-2"
-            onClick={() => window.open(`https://wa.me/?text=${whatsappMsg}`, '_blank')}
-          >
-            <Send className="h-4 w-4" />
-            Share via WhatsApp
-          </Button>
-        )}
-        {tokenState.expires_at && (
-          <span className="text-xs text-muted-foreground">
-            Expires {new Date(tokenState.expires_at).toLocaleString()}
-          </span>
-        )}
-      </>
-    )
-  }
-
-  // No active link yet — show "Generate Secure Link" alongside the
-  // email button so the operator has both options without ordering.
-  // Clicking "Notify by email" here will cause the backend to create
-  // the link as part of the email flow.
-  return (
-    <>
-      <Button
-        variant="outline" className="gap-2"
-        onClick={onGenerate}
-        disabled={generating}
-      >
-        {generating
-          ? <Loader2 className="h-4 w-4 animate-spin" />
-          : <Send className="h-4 w-4" />}
-        Generate Secure Link
-      </Button>
-      {emailButton}
-    </>
-  )
 }
 
 

@@ -92,6 +92,13 @@ export interface PatientSummary {
   document_number: string
   phone: string
   email: string
+  /** Phase F: surfaced on the request detail so the
+   *  PatientDeliveryDrawer can gate the "Send to Cytova" CTA on
+   *  link state without a second round-trip to /patients/{id}/.
+   *  Mirrors the same fields exposed on the patient detail
+   *  serializer; never carries the internal account_id snapshot. */
+  has_cytova_identity: boolean
+  cytova_patient_id: string
 }
 
 // -- Request item --
