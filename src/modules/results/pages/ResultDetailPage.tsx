@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  FlaskConical, Edit, AlertTriangle, Loader2,
+  FlaskConical, Edit, AlertTriangle, Loader2, Sparkles,
 } from 'lucide-react'
+import { computeAbnormalFromReference } from '@/modules/results/abnormalDetection'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,7 +46,7 @@ export function ResultDetailPage() {
   const updateMut = useUpdateResult(id!)
   const [editing, setEditing] = useState(false)
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EditForm>({
+  const { register, handleSubmit, setValue, watch, getValues, control, formState: { errors } } = useForm<EditForm>({
     resolver: zodResolver(editSchema),
     values: result ? {
       result_value: result.result_value,
@@ -56,6 +57,60 @@ export function ResultDetailPage() {
       internal_notes: result.internal_notes,
     } : undefined,
   })
+
+  // ---- Auto-abnormal detection (Phase 2) -----------------------
+  // Manual-override marker (spec §4): set when the operator
+  // toggles the abnormal switch directly; cleared whenever the
+  // value field is edited again so a follow-up edit re-engages
+  // auto-detection.
+  const [manualOverride, setManualOverride] = useState(false)
+  // True iff the current ``is_abnormal`` was set by the
+  // auto-detector this render. Drives the subtle hint required
+  // by spec §3 (only shown for true-flagged auto-decisions).
+  const [autoFlagged, setAutoFlagged] = useState(false)
+
+  // Watching value + reference range together so a change in
+  // EITHER triggers a recompute (spec §3 ``"When the user changes
+  // the reference range, if editable: recompute abnormal state
+  // too"``). The detail-page form makes ``reference_range``
+  // editable, unlike the entry dialog. ``useWatch`` is the
+  // React-Compiler-compatible subscription API; the bare
+  // ``watch()`` callable trips the eslint rule because it can't
+  // be memoised safely.
+  const watchedValue = useWatch({ control, name: 'result_value' }) ?? ''
+  const watchedRange = useWatch({ control, name: 'reference_range' }) ?? ''
+
+  useEffect(() => {
+    if (manualOverride) return
+    const decision = computeAbnormalFromReference(watchedValue, watchedRange)
+    if (decision === null) {
+      // Indeterminate — leave the existing flag alone but drop
+      // the hint. This handles the "operator clears the value"
+      // case cleanly: the abnormal flag stays at whatever the
+      // last decided state was; the hint goes away.
+      setAutoFlagged(false)
+      return
+    }
+    // Avoid an infinite render loop: only call setValue if the
+    // decision actually differs from the form's current value.
+    // ``setValue`` fires onChange listeners which triggers this
+    // effect again — without the equality check, decisions like
+    // ``false`` would be re-set every render. Reading via
+    // ``getValues`` (not ``watch``) avoids the
+    // ``react-hooks/incompatible-library`` warning since
+    // ``getValues`` is stable across renders.
+    const current = getValues('is_abnormal')
+    if (current !== decision) {
+      setValue('is_abnormal', decision, { shouldDirty: true })
+    }
+    setAutoFlagged(decision === true)
+  }, [watchedValue, watchedRange, manualOverride, setValue, getValues])
+
+  function handleManualAbnormalToggle(next: boolean) {
+    setValue('is_abnormal', next, { shouldDirty: true })
+    setManualOverride(true)
+    setAutoFlagged(false)
+  }
 
   if (error) return <ErrorState onRetry={refetch} />
   if (isLoading || !result) return <div className="space-y-6"><CardSkeleton /><CardSkeleton /></div>
@@ -126,10 +181,25 @@ export function ResultDetailPage() {
                     <Switch
                       id="is_abnormal"
                       checked={watch('is_abnormal')}
-                      onCheckedChange={(v) => setValue('is_abnormal', v)}
+                      onCheckedChange={handleManualAbnormalToggle}
                     />
                     <Label htmlFor="is_abnormal" className="text-sm">Flag as abnormal</Label>
                   </div>
+                  {autoFlagged && !manualOverride && (
+                    // Spec §3 helper line: only shown when the
+                    // auto-detector set the flag this round AND
+                    // the operator hasn't manually overridden
+                    // since. ``setManualOverride(true)`` in the
+                    // handler above suppresses this until the
+                    // next value edit clears the override.
+                    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                      <span>
+                        Automatically marked abnormal because the value
+                        is outside the reference range.
+                      </span>
+                    </p>
+                  )}
                   <FormField label="Comments" htmlFor="comments" hint="Visible on the result document sent to the patient.">
                     <Textarea id="comments" rows={2} {...register('comments')} />
                   </FormField>

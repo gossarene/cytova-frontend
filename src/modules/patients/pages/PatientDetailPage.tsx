@@ -130,10 +130,19 @@ export function PatientDetailPage() {
               canEditIdentity={canEditIdentity}
               defaultValues={{
                 document_type: patient.document_type,
-                document_number: patient.document_number,
+                // When the number was auto-generated, surface a
+                // blank input rather than the ``AUTO-PT-…``
+                // placeholder. If the operator transitions to a
+                // real type, they need to type the real number;
+                // showing the placeholder pre-filled would tempt
+                // them to leave it untouched.
+                document_number: patient.identity_number_auto_generated
+                  ? ''
+                  : patient.document_number,
                 first_name: patient.first_name,
                 last_name: patient.last_name,
-                date_of_birth: patient.date_of_birth,
+                date_of_birth: patient.date_of_birth ?? '',
+                date_of_birth_unknown: patient.date_of_birth_unknown,
                 gender: patient.gender,
                 nationality: patient.nationality,
                 phone: patient.phone,
@@ -169,9 +178,36 @@ export function PatientDetailPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Document Type" value={docTypeLabel} />
-                  <Field label="Document Number" value={patient.document_number} mono />
+                  <Field
+                    label="Document Number"
+                    // Auto-generated placeholders aren't real IDs and
+                    // must NEVER be displayed as such \u2014 surface the
+                    // "Not provided" wording instead, so operators
+                    // and downstream readers don't quote the
+                    // ``AUTO-PT-\u2026`` value to anyone.
+                    value={
+                      patient.identity_number_auto_generated
+                        ? 'Not provided'
+                        : patient.document_number
+                    }
+                    mono={!patient.identity_number_auto_generated}
+                    muted={patient.identity_number_auto_generated}
+                    hint={
+                      patient.identity_number_auto_generated
+                        ? 'Auto-generated placeholder'
+                        : undefined
+                    }
+                  />
                   <Field label="Gender" value={GENDER_OPTIONS.find((g) => g.value === patient.gender)?.label ?? patient.gender} />
-                  <Field label="Date of Birth" value={formatDate(patient.date_of_birth)} />
+                  <Field
+                    label="Date of Birth"
+                    value={
+                      patient.date_of_birth_unknown || !patient.date_of_birth
+                        ? 'Not provided'
+                        : formatDate(patient.date_of_birth)
+                    }
+                    muted={patient.date_of_birth_unknown || !patient.date_of_birth}
+                  />
                   <Field label="Nationality" value={patient.nationality || '\u2014'} />
                   <Field label="Insurance Number" value={patient.insurance_number || '\u2014'} />
                 </div>
@@ -359,11 +395,34 @@ export function PatientDetailPage() {
 // Private components
 // ---------------------------------------------------------------------------
 
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Field({
+  label, value, mono, muted, hint,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  /** Render the value in muted-foreground / italic style. Used for
+   *  "Not provided" placeholders and auto-generated identifiers — the
+   *  visual treatment signals "this isn't a real value". */
+  muted?: boolean
+  /** Optional secondary line under the value, e.g. "Auto-generated
+   *  placeholder". Kept short so the row height stays compatible with
+   *  rows that don't use it. */
+  hint?: string
+}) {
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={`mt-0.5 text-sm ${mono ? 'font-mono' : ''}`}>{value}</p>
+      <p
+        className={`mt-0.5 text-sm ${mono ? 'font-mono' : ''} ${
+          muted ? 'italic text-muted-foreground' : ''
+        }`}
+      >
+        {value}
+      </p>
+      {hint && (
+        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+      )}
     </div>
   )
 }

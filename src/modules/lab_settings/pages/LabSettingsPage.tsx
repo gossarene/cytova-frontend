@@ -28,7 +28,9 @@ import {
   useLabSettings, useUpdateLabSettings,
   useUploadLabLogo, useDeleteLabLogo, useLabLogoPreview,
 } from '../api'
+import { LabelGenerationSection } from '../components/LabelGenerationSection'
 import { LabelPrintingSettings } from '../components/LabelPrintingSettings'
+import { PatientEmailTemplateSection } from '../components/PatientEmailTemplateSection'
 import type { LabSettings } from '../types'
 import { ROUTES } from '@/config/routes'
 
@@ -340,10 +342,37 @@ function LabSettingsForm({ initial }: { initial: LabSettings }) {
       </CollapsibleCard>
 
       <CollapsibleCard
+        icon={<Bell className="h-4 w-4 text-muted-foreground" />}
+        title="Patient email template"
+        description="Customise the subject and body of the email patients receive when their result is ready. Empty fields fall back to the safe default copy."
+      >
+        <PatientEmailTemplateSection
+          subjectTemplate={form.patient_result_email_subject_template}
+          bodyTemplate={form.patient_result_email_body_template}
+          labName={form.lab_name}
+          onSubjectChange={(v) => update('patient_result_email_subject_template', v)}
+          onBodyChange={(v) => update('patient_result_email_body_template', v)}
+        />
+      </CollapsibleCard>
+
+      <CollapsibleCard
         icon={<Printer className="h-4 w-4 text-muted-foreground" />}
         title="Label Printing"
-        description="Choose how specimen labels are printed for this laboratory. Settings below drive the PDF generated for every request batch."
+        description="Choose how specimen labels are numbered, how many are produced per request, and how they are laid out on paper. Settings below drive the PDF generated for every request batch."
       >
+        {/* Label generation behaviour (numbering + extras + reset
+            cadence). Sits above the print-layout block so the
+            operator configures "what gets printed" before "how it
+            looks on paper". */}
+        <LabelGenerationSection
+          numberingMode={form.label_numbering_mode}
+          extraLabelCount={form.extra_label_count}
+          resetPeriod={form.label_sequence_reset_period}
+          onNumberingModeChange={(v) => update('label_numbering_mode', v)}
+          onExtraLabelCountChange={(v) => update('extra_label_count', v)}
+          onResetPeriodChange={(v) => update('label_sequence_reset_period', v)}
+        />
+        <Separator className="my-5" />
         <LabelPrintingSettings
           bare
           form={form}

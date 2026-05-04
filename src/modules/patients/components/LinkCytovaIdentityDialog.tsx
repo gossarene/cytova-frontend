@@ -68,7 +68,12 @@ export function LinkCytovaIdentityDialog({
       cytova_patient_id: '',
       first_name: patient.first_name,
       last_name: patient.last_name,
-      date_of_birth: patient.date_of_birth,
+      // ``date_of_birth`` is nullable since the flexible-identity
+      // rollout. The link CTA is disabled upstream when it's null,
+      // so this dialog only opens with a real DOB on the patient —
+      // but coerce to '' for the form type so TS stays happy and
+      // the input never sees null.
+      date_of_birth: patient.date_of_birth ?? '',
     },
   })
   const { register, handleSubmit, reset, formState } = form
@@ -86,7 +91,7 @@ export function LinkCytovaIdentityDialog({
         cytova_patient_id: '',
         first_name: patient.first_name,
         last_name: patient.last_name,
-        date_of_birth: patient.date_of_birth,
+        date_of_birth: patient.date_of_birth ?? '',
       })
     }
   }, [open, patient.id, patient.first_name, patient.last_name, patient.date_of_birth, reset])

@@ -79,6 +79,32 @@ export interface LabSettings {
    *  CYTOVA_CHANNEL_DISABLED and the lab UI hides the channel. */
   notification_enable_cytova: boolean
 
+  /** Patient-result notification email — operator-customisable
+   *  subject + body. The renderer falls back to the canonical
+   *  hard-coded copy when either field is empty, so the empty
+   *  string is the explicit "use default" signal. Allowed
+   *  variables ({{ patient_first_name }}, {{ lab_name }},
+   *  {{ result_link }}, {{ request_reference }}) are enforced
+   *  server-side at save AND at render time. */
+  patient_result_email_subject_template: string
+  patient_result_email_body_template: string
+
+  /** Flexible-labels rollout (backend Phases 1-5) — three
+   *  operator-tunable knobs that control how a request's labels
+   *  are numbered and counted. Defaults preserve the pre-rollout
+   *  behaviour (PER_FAMILY + 2 extras + monthly reset).
+   *
+   *  - label_numbering_mode: PER_FAMILY = each label gets a
+   *    distinct sequence value; SAME_REQUEST_NUMBER = one
+   *    sequence value reused on every label in the batch.
+   *  - extra_label_count: extras appended on top of family
+   *    labels (spare tubes / backup). Min 0, no upper bound.
+   *  - label_sequence_reset_period: when the per-tenant label
+   *    sequence counter resets (MONTHLY / YEARLY). */
+  label_numbering_mode: 'PER_FAMILY' | 'SAME_REQUEST_NUMBER'
+  extra_label_count: number
+  label_sequence_reset_period: 'MONTHLY' | 'YEARLY'
+
   // Billing
   financial_document_mode: 'INVOICE_ONLY' | 'STATEMENT_ONLY' | 'BOTH'
   default_invoice_vat_rate: number | null

@@ -123,10 +123,18 @@ export function PatientListPage() {
                     <span className="font-medium">{patient.full_name}</span>
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
-                    {patient.document_number}
+                    {/* Auto-generated placeholders are not real IDs;
+                        render an em-dash so the column never quotes
+                        an ``AUTO-PT-…`` value as if it were one. The
+                        detail page surfaces the full breakdown. */}
+                    {patient.identity_number_auto_generated
+                      ? '—'
+                      : patient.document_number}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(patient.date_of_birth)}
+                    {patient.date_of_birth_unknown || !patient.date_of_birth
+                      ? '—'
+                      : formatDate(patient.date_of_birth)}
                   </TableCell>
                   <TableCell className="text-sm">
                     {GENDER_OPTIONS.find((g) => g.value === patient.gender)?.label ?? patient.gender}

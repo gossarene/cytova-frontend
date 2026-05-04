@@ -64,9 +64,22 @@ export function CytovaIdentityCard({ patient }: Props) {
         </CardTitle>
         {!patient.has_cytova_identity && (
           <Can permission={P.PATIENTS_MANAGE_PORTAL}>
+            {/* Disable the link CTA when the patient has no DOB on
+                file. The backend's identity-verification call site
+                requires an exact DOB match; without one, the link
+                attempt is guaranteed to 400 with
+                ``DATE_OF_BIRTH_REQUIRED``. Failing fast in the UI
+                saves a round trip and surfaces the recovery path
+                ("update the DOB first") in a single hover. */}
             <Button
               size="sm" variant="outline" className="gap-1.5"
               onClick={() => setShowLink(true)}
+              disabled={patient.date_of_birth_unknown}
+              title={
+                patient.date_of_birth_unknown
+                  ? 'Date of birth is required to link a Cytova identity.'
+                  : undefined
+              }
             >
               <Plus className="h-3.5 w-3.5" />
               Add Cytova identity
@@ -127,10 +140,17 @@ export function CytovaIdentityCard({ patient }: Props) {
           <div className="py-2 text-center">
             <Link2 className="mx-auto h-6 w-6 text-muted-foreground" />
             <p className="mt-2 text-sm font-medium">Not linked</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Link this patient to their Cytova account to share results
-              directly into their Cytova space.
-            </p>
+            {patient.date_of_birth_unknown ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Date of birth is required to link a Cytova identity.
+                Update the patient's date of birth first.
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Link this patient to their Cytova account to share results
+                directly into their Cytova space.
+              </p>
+            )}
           </div>
         )}
       </CardContent>
