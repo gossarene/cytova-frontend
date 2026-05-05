@@ -16,7 +16,11 @@ export function PatientAuthGuard() {
   const location = useLocation()
 
   if (!isAuthenticated) {
-    return <Navigate to={ROUTES.LOGIN_PATIENT} state={{ from: location }} replace />
+    // Patient login is now served from ``/login`` on the public
+    // host (``LoginRouteSwitch`` dispatches to ``PatientLoginPage``).
+    // ``state.from`` carries the requested URL so PatientLoginPage's
+    // post-login navigate honours the original intent.
+    return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />
   }
 
   return <Outlet />

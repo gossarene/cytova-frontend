@@ -72,7 +72,7 @@ export function VerifyEmailPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   You can now sign in to your Cytova patient account.
                 </p>
-                <Link to={ROUTES.LOGIN_PATIENT} className="mt-6 block w-full">
+                <Link to={ROUTES.LOGIN} className="mt-6 block w-full">
                   <Button type="button" className="w-full">Go to sign in</Button>
                 </Link>
               </div>
@@ -89,7 +89,7 @@ export function VerifyEmailPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   {message}
                 </p>
-                <Link to={ROUTES.LOGIN_PATIENT} className="mt-6 block w-full">
+                <Link to={ROUTES.LOGIN} className="mt-6 block w-full">
                   <Button type="button" variant="outline" className="w-full">
                     Go to sign in
                   </Button>

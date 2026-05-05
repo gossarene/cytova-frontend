@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Download, Loader2, Printer, Tag } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ interface Props {
  * time, with the permission gate applied to the write action only.
  */
 export function RequestLabelsCard({ requestId, requestNumber, requestStatus, items }: Props) {
+  const qc = useQueryClient()
   const { data: batch, isLoading } = useRequestLabels(requestId)
   const generate = useGenerateRequestLabels(requestId)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -84,6 +86,11 @@ export function RequestLabelsCard({ requestId, requestNumber, requestStatus, ite
         // Always free the blob URL, even if the anchor click throws.
         URL.revokeObjectURL(blobUrl)
       }
+      // The download endpoint stamps ``has_been_downloaded`` /
+      // ``download_count`` server-side. Refetch the batch so the
+      // Mark Collected gate flips from "labels not downloaded
+      // yet" to enabled without requiring a manual page reload.
+      qc.invalidateQueries({ queryKey: ['requests', requestId, 'labels'] })
     } catch {
       toast.error('Failed to download labels PDF.')
     } finally {

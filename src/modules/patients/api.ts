@@ -43,11 +43,33 @@ export function usePatient(id: string) {
 
 // -- Create --
 
+/** Normalise a patient payload at the wire boundary.
+ *
+ *  React Hook Form represents an empty date input as ``""``, but DRF's
+ *  ``DateField(allow_null=True)`` rejects empty strings with "Date has
+ *  wrong format" — only ``null`` is accepted. The form's "DOB unknown"
+ *  checkbox clears the date input to ``""``, so without this
+ *  normaliser the receptionist gets a 400 when they submit a patient
+ *  with no DOB on file. We coerce empty-string DOB to ``null``
+ *  whenever we ship the payload, regardless of the unknown flag,
+ *  because there's no legitimate reason to send an empty-string date
+ *  to a date field. Same treatment for any future date field added
+ *  to the patient API.
+ */
+function normalisePatientPayload<T extends { date_of_birth?: string | null }>(payload: T): T {
+  if (payload.date_of_birth === '') {
+    return { ...payload, date_of_birth: null }
+  }
+  return payload
+}
+
 export function useCreatePatient() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: PatientCreateRequest) => {
-      const { data } = await api.post<ApiResponse<PatientDetail>>('/patients/', payload)
+      const { data } = await api.post<ApiResponse<PatientDetail>>(
+        '/patients/', normalisePatientPayload(payload),
+      )
       return data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
@@ -60,7 +82,9 @@ export function useUpdatePatient(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: PatientUpdateRequest) => {
-      const { data } = await api.patch<ApiResponse<PatientDetail>>(`/patients/${id}/`, payload)
+      const { data } = await api.patch<ApiResponse<PatientDetail>>(
+        `/patients/${id}/`, normalisePatientPayload(payload),
+      )
       return data.data
     },
     onSuccess: () => {

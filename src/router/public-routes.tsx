@@ -7,7 +7,6 @@ import { ContactPage } from '@/pages/public/ContactPage'
 import { SignupChoicePage } from '@/pages/public/SignupChoicePage'
 import { SignupPage } from '@/pages/public/SignupPage'
 import { PatientSignupPage } from '@/pages/public/PatientSignupPage'
-import { PatientLoginPage } from '@/pages/public/PatientLoginPage'
 import { VerifyEmailPage } from '@/pages/public/VerifyEmailPage'
 import { ROUTES } from '@/config/routes'
 
@@ -26,11 +25,10 @@ export const publicRoutes: RouteObject[] = [
       { path: ROUTES.SIGNUP, element: <SignupChoicePage /> },
       { path: ROUTES.SIGNUP_LAB, element: <SignupPage /> },
       { path: ROUTES.SIGNUP_PATIENT, element: <PatientSignupPage /> },
-      // Patient portal authentication — login + email verification.
-      // ``/login`` (staff) is unchanged; patients sign in at the
-      // dedicated ``/login/patient`` URL so the two stores never see
-      // each other's credentials.
-      { path: ROUTES.LOGIN_PATIENT, element: <PatientLoginPage /> },
+      // Patient login is served from ``/login`` on the public host
+      // (dispatched by ``LoginRouteSwitch``). The legacy
+      // ``/login/patient`` route was removed; if any external links
+      // still point at it, they fall through to the app's 404.
       { path: ROUTES.VERIFY_EMAIL, element: <VerifyEmailPage /> },
     ],
   },

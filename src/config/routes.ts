@@ -12,8 +12,9 @@ export const ROUTES = {
   LOGIN: '/login',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
-  // Patient portal authentication
-  LOGIN_PATIENT: '/login/patient',
+  // Patient portal authentication. ``/login`` is host-aware (see
+  // LoginRouteSwitch) — the public host renders the patient login
+  // and tenant subdomains render the staff login.
   VERIFY_EMAIL: '/verify-email',
   PATIENT_DASHBOARD: '/patient',
   PATIENT_RESULTS: '/patient/results',

@@ -112,6 +112,33 @@ export function PatientForm({
       ? editWithIdentitySchema
       : editSchema
 
+  // Every input must be controlled (or RHF-uncontrolled with a
+  // string ``defaultValue``) from first render. If a caller passes
+  // ``undefined`` for an optional string field, the underlying
+  // <input> would mount without a value and then receive one on the
+  // next render → React fires a "controlled/uncontrolled" warning.
+  // Coerce nullish → '' for every string field, and nullish → false
+  // for booleans, so the form is immune to incomplete callers.
+  // ``document_type`` and ``gender`` are intentionally left
+  // possibly-``undefined`` because their Select widgets already
+  // coerce to '' at the value-prop site (``watch(...) ?? ''``) and a
+  // forced '' here would suppress the placeholder.
+  const cleanedDefaults: Partial<PatientFormData> = {
+    document_type: defaultValues?.document_type,
+    document_number: defaultValues?.document_number ?? '',
+    first_name: defaultValues?.first_name ?? '',
+    last_name: defaultValues?.last_name ?? '',
+    date_of_birth: defaultValues?.date_of_birth ?? '',
+    date_of_birth_unknown: defaultValues?.date_of_birth_unknown ?? false,
+    gender: defaultValues?.gender,
+    nationality: defaultValues?.nationality ?? '',
+    phone: defaultValues?.phone ?? '',
+    email: defaultValues?.email ?? '',
+    city_of_residence: defaultValues?.city_of_residence ?? '',
+    address: defaultValues?.address ?? '',
+    insurance_number: defaultValues?.insurance_number ?? '',
+  }
+
   const {
     register,
     handleSubmit,
@@ -121,22 +148,7 @@ export function PatientForm({
     formState: { errors },
   } = useForm<PatientFormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      document_type: undefined,
-      document_number: '',
-      first_name: '',
-      last_name: '',
-      date_of_birth: '',
-      date_of_birth_unknown: false,
-      gender: undefined,
-      nationality: '',
-      phone: '',
-      email: '',
-      city_of_residence: '',
-      address: '',
-      insurance_number: '',
-      ...defaultValues,
-    },
+    defaultValues: cleanedDefaults,
   })
 
   const docType = watch('document_type')
@@ -218,27 +230,33 @@ export function PatientForm({
                     The backend auto-generates an ``AUTO-PT-…``
                     placeholder; surfacing the input would mislead
                     the operator into thinking they need to fill it.
-                    The Zod ``superRefine`` already skips the required
-                    rule for UNKNOWN, so hiding the field can't trap
-                    a stale "required" error. */}
-                {!isUnknownDocument && (
-                  <FormField
-                    label="Document number"
-                    htmlFor="document_number"
-                    required={mode === 'create'}
-                    error={errors.document_number?.message}
-                    hint={mode === 'create' ? 'Number shown on the selected identification document.' : undefined}
-                  >
-                    <Input
-                      id="document_number"
-                      placeholder={identityEditable ? 'e.g. CI-001234567' : ''}
-                      autoFocus={mode === 'create'}
-                      disabled={!identityEditable}
-                      className={!identityEditable ? 'bg-muted' : ''}
-                      {...register('document_number')}
-                    />
-                  </FormField>
-                )}
+                    We use CSS ``display:none`` rather than
+                    conditional unmount so the registered input
+                    stays mounted throughout the type-toggle
+                    lifecycle — RHF's ``register`` is ref-based
+                    (uncontrolled), and remounting between the
+                    UNKNOWN and real-type branches risked the
+                    "controlled/uncontrolled" warning. The Zod
+                    ``superRefine`` already skips the required rule
+                    for UNKNOWN, so hiding the field can't trap a
+                    stale "required" error. */}
+                <FormField
+                  label="Document number"
+                  htmlFor="document_number"
+                  required={mode === 'create' && !isUnknownDocument}
+                  error={errors.document_number?.message}
+                  hint={mode === 'create' && !isUnknownDocument ? 'Number shown on the selected identification document.' : undefined}
+                  className={isUnknownDocument ? 'hidden' : undefined}
+                >
+                  <Input
+                    id="document_number"
+                    placeholder={identityEditable ? 'e.g. CI-001234567' : ''}
+                    autoFocus={mode === 'create'}
+                    disabled={!identityEditable}
+                    className={!identityEditable ? 'bg-muted' : ''}
+                    {...register('document_number')}
+                  />
+                </FormField>
               </div>
               {isUnknownDocument && identityEditable && (
                 <p className="text-xs text-muted-foreground">
@@ -267,23 +285,31 @@ export function PatientForm({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* Hide the date picker when the operator marks DOB as
-                unknown. We keep the slot occupied so the layout
-                doesn't reflow — the gender field stays in place. */}
-            {!dobUnknown ? (
-              <FormField label="Date of birth" htmlFor="date_of_birth" required error={errors.date_of_birth?.message}>
-                <Input id="date_of_birth" type="date" {...register('date_of_birth')} />
-              </FormField>
-            ) : (
-              <FormField label="Date of birth" htmlFor="date_of_birth">
-                <Input
-                  id="date_of_birth"
-                  value="Not provided"
-                  disabled
-                  className="bg-muted"
-                />
-              </FormField>
-            )}
+            {/* One always-rendered date input. Conditional swapping
+                between an RHF-registered input and a plain
+                ``value="..."`` input would flip the same DOM node
+                between uncontrolled and controlled, which is what
+                fires React's "controlled/uncontrolled" warning.
+                Instead we keep the registered input mounted and
+                disable it when the operator marks DOB as unknown —
+                no swap, no warning, and the form state stays the
+                single source of truth (cleared via ``setValue('', …)``
+                in the checkbox onChange). */}
+            <FormField
+              label="Date of birth"
+              htmlFor="date_of_birth"
+              required={!dobUnknown}
+              error={errors.date_of_birth?.message}
+              hint={dobUnknown ? 'Not provided.' : undefined}
+            >
+              <Input
+                id="date_of_birth"
+                type="date"
+                disabled={dobUnknown}
+                className={dobUnknown ? 'bg-muted' : ''}
+                {...register('date_of_birth')}
+              />
+            </FormField>
             <FormField label="Gender" htmlFor="gender" required error={errors.gender?.message}>
               <Select
                 value={watch('gender') ?? ''}

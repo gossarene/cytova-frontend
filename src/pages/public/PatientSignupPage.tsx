@@ -336,7 +336,7 @@ function SuccessCard({ data }: { data: PatientSignupResponse }) {
               We've sent you a verification email. Please open the link in your
               inbox to activate your account before signing in.
             </p>
-            <Link to={ROUTES.LOGIN_PATIENT} className="block w-full">
+            <Link to={ROUTES.LOGIN} className="block w-full">
               <Button type="button" className="w-full">Go to sign in</Button>
             </Link>
           </div>

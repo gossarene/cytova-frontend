@@ -94,11 +94,14 @@ export function RequestDetailPage() {
   const canEditPatient = usePermission(P.PATIENTS_UPDATE)
   const isCollectionPhase = request?.status === 'CONFIRMED' || request?.status === 'COLLECTION_IN_PROGRESS'
   // Backend rule (see services.AnalysisRequestItemService.mark_collected):
-  // collection is blocked until a RequestLabelBatch exists for the request.
-  // We mirror that rule in the UI so the control reflects reality without
-  // relying on a round-trip error.
+  // collection is blocked in two stages — labels must (1) be GENERATED,
+  // and (2) have been DOWNLOADED at least once. We mirror both rules in
+  // the UI so the control reflects reality without relying on a
+  // round-trip error, and so the helper text under the disabled CTA
+  // tells the operator the exact next step ("Generate" vs "Download").
   const { data: labelBatch } = useRequestLabels(id!)
   const labelsGenerated = !!labelBatch
+  const labelsDownloaded = !!labelBatch?.has_been_downloaded
 
   if (error) return <ErrorState onRetry={refetch} />
   if (isLoading || !request) return <div className="space-y-6"><CardSkeleton /><CardSkeleton /></div>
@@ -447,6 +450,7 @@ export function RequestDetailPage() {
                             requestId={request.id}
                             canCollect={canCollect && isCollectionPhase}
                             labelsGenerated={labelsGenerated}
+                            labelsDownloaded={labelsDownloaded}
                           />
                         </TableCell>
                       )}
@@ -614,11 +618,18 @@ function ItemCollectionCell({
   requestId,
   canCollect,
   labelsGenerated,
+  labelsDownloaded,
 }: {
   item: RequestItemBrief
   requestId: string
   canCollect: boolean
   labelsGenerated: boolean
+  /** True iff the labels PDF has been downloaded at least once.
+   *  The backend gate refuses ``mark-collected`` until this is true,
+   *  so the UI mirrors the rule: even with labels generated, the CTA
+   *  stays disabled (with a "Download labels first" hint) until the
+   *  operator triggers a download. */
+  labelsDownloaded: boolean
 }) {
   const markCollected = useMarkItemCollected(requestId, item.id)
 
@@ -648,12 +659,31 @@ function ItemCollectionCell({
       try {
         await markCollected.mutateAsync({})
         toast.success(`Specimen collected for ${item.exam_code}.`)
-      } catch {
-        toast.error('Failed to mark specimen as collected.')
+      } catch (err: unknown) {
+        // Backend returns the gate's exact wording in the error
+        // message — surface it verbatim so the operator sees the
+        // same copy in the toast that they see inline under the
+        // disabled CTA. Distinguishes "must be generated" from
+        // "must be downloaded" so the next step is unambiguous.
+        const apiErr = err as {
+          response?: { data?: { errors?: { message?: string }[] } }
+        }
+        const message = apiErr.response?.data?.errors?.[0]?.message
+        toast.error(message || 'Failed to mark specimen as collected.')
       }
     }
 
-    const disabled = markCollected.isPending || !labelsGenerated
+    // Two-stage gate, mirroring the backend's
+    // ``AnalysisRequestItemService.mark_collected`` checks. The
+    // hint copy under the disabled button tells the operator the
+    // *exact* next step rather than a generic "labels".
+    const blockedReason: string | null =
+      !labelsGenerated
+        ? 'Labels must be generated before specimens can be marked as collected.'
+        : !labelsDownloaded
+          ? 'Download labels before marking specimens as collected.'
+          : null
+    const disabled = markCollected.isPending || blockedReason !== null
     const button = (
       <Button
         size="sm"
@@ -670,7 +700,7 @@ function ItemCollectionCell({
       </Button>
     )
 
-    if (!labelsGenerated) {
+    if (blockedReason) {
       // A disabled <Button> swallows pointer events, so wrap in a span
       // that the tooltip can hook into.
       return (
@@ -681,7 +711,7 @@ function ItemCollectionCell({
             )}
           />
           <TooltipContent side="left" className="max-w-xs">
-            Labels must be generated before specimen collection can be marked.
+            {blockedReason}
           </TooltipContent>
         </Tooltip>
       )

@@ -228,6 +228,14 @@ export interface RequestLabelBatch {
   generated_by_email: string | null
   pdf_url: string | null
   labels: RequestLabel[]
+  // Download tracking — drives the Mark Collected gate. The backend
+  // refuses ``mark-collected`` until ``has_been_downloaded`` is true,
+  // so the UI mirrors that rule to disable the control before the
+  // round-trip and surface the recovery path inline.
+  has_been_downloaded: boolean
+  download_count: number
+  downloaded_at: string | null
+  downloaded_by_email: string | null
 }
 
 export interface RequestCreatePayload {
